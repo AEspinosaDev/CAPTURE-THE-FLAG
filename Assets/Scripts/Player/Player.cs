@@ -9,7 +9,7 @@ public class Player : NetworkBehaviour
     #region Variables
 
     // https://docs-multiplayer.unity3d.com/netcode/current/basics/networkvariable
-    public NetworkVariable<PlayerState> State;
+    public NetworkVariable<PlayerState> m_State;
 
     #endregion
 
@@ -17,21 +17,21 @@ public class Player : NetworkBehaviour
 
     private void Awake()
     {
-        NetworkManager.OnClientConnectedCallback += ConfigurePlayer;
+        NetworkManager.OnClientConnectedCallback += ConfigurePlayer();
 
-        State = new NetworkVariable<PlayerState>();
+        m_State = new NetworkVariable<PlayerState>();
     }
 
     private void OnEnable()
     {
         // https://docs-multiplayer.unity3d.com/netcode/current/api/Unity.Netcode.NetworkVariable-1.OnValueChangedDelegate
-        State.OnValueChanged += OnPlayerStateValueChanged;
+        m_State.OnValueChanged += OnPlayerStateValueChanged;
     }
 
     private void OnDisable()
     {
         // https://docs-multiplayer.unity3d.com/netcode/current/api/Unity.Netcode.NetworkVariable-1.OnValueChangedDelegate
-        State.OnValueChanged -= OnPlayerStateValueChanged;
+        m_State.OnValueChanged -= OnPlayerStateValueChanged;
     }
 
     #endregion
@@ -77,7 +77,7 @@ public class Player : NetworkBehaviour
     [ServerRpc]
     public void UpdatePlayerStateServerRpc(PlayerState state)
     {
-        State.Value = state;
+        m_State.Value = state;
     }
 
     #endregion
@@ -89,7 +89,7 @@ public class Player : NetworkBehaviour
     // https://docs-multiplayer.unity3d.com/netcode/current/advanced-topics/message-system/serverrpc
     void OnPlayerStateValueChanged(PlayerState previous, PlayerState current)
     {
-        State.Value = current;
+        m_State.Value = current;
     }
 
     #endregion

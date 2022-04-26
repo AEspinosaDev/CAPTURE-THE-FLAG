@@ -10,19 +10,19 @@ public class UIManager : MonoBehaviour
 
     #region Variables
 
-    UnityTransport transport;
-    [SerializeField] Sprite[] hearts = new Sprite[3];
+    UnityTransport m_Transport;
+    [SerializeField] Sprite[] m_Hearts = new Sprite[3];
 
     [Header("Main Menu")]
-    [SerializeField] private GameObject mainMenu;
-    [SerializeField] private Button buttonHost;
-    [SerializeField] private Button buttonClient;
-    [SerializeField] private Button buttonServer;
-    [SerializeField] private InputField inputFieldIP;
+    [SerializeField] private GameObject m_MainMenu;
+    [SerializeField] private Button m_ButtonHost;
+    [SerializeField] private Button m_ButtonClient;
+    [SerializeField] private Button m_ButtonServer;
+    [SerializeField] private InputField m_InputFieldIP;
 
     [Header("In-Game HUD")]
-    [SerializeField] private GameObject inGameHUD;
-    [SerializeField] RawImage[] heartsUI = new RawImage[3];
+    [SerializeField] private GameObject m_InGameHUD;
+    [SerializeField] RawImage[] m_HeartsUI = new RawImage[3];
 
     #endregion
 
@@ -30,14 +30,14 @@ public class UIManager : MonoBehaviour
 
     private void Awake()
     {
-        transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
+        m_Transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
     }
 
     private void Start()
     {
-        buttonHost.onClick.AddListener(() => StartHost());
-        buttonClient.onClick.AddListener(() => StartClient());
-        buttonServer.onClick.AddListener(() => StartServer());
+        m_ButtonHost.onClick.AddListener(() => StartHost());
+        m_ButtonClient.onClick.AddListener(() => StartClient());
+        m_ButtonServer.onClick.AddListener(() => StartServer());
         ActivateMainMenu();
     }
 
@@ -47,14 +47,14 @@ public class UIManager : MonoBehaviour
 
     private void ActivateMainMenu()
     {
-        mainMenu.SetActive(true);
-        inGameHUD.SetActive(false);
+        m_MainMenu.SetActive(true);
+        m_InGameHUD.SetActive(false);
     }
 
     private void ActivateInGameHUD()
     {
-        mainMenu.SetActive(false);
-        inGameHUD.SetActive(true);
+        m_MainMenu.SetActive(false);
+        m_InGameHUD.SetActive(true);
 
         // for test purposes
         UpdateLifeUI(Random.Range(1, 6));
@@ -65,34 +65,34 @@ public class UIManager : MonoBehaviour
         switch (hitpoints)
         {
             case 6:
-                heartsUI[0].texture = hearts[2].texture;
-                heartsUI[1].texture = hearts[2].texture;
-                heartsUI[2].texture = hearts[2].texture;
+                m_HeartsUI[0].texture = m_Hearts[2].texture;
+                m_HeartsUI[1].texture = m_Hearts[2].texture;
+                m_HeartsUI[2].texture = m_Hearts[2].texture;
                 break;
             case 5:
-                heartsUI[0].texture = hearts[1].texture;
-                heartsUI[1].texture = hearts[2].texture;
-                heartsUI[2].texture = hearts[2].texture;
+                m_HeartsUI[0].texture = m_Hearts[1].texture;
+                m_HeartsUI[1].texture = m_Hearts[2].texture;
+                m_HeartsUI[2].texture = m_Hearts[2].texture;
                 break;
             case 4:
-                heartsUI[0].texture = hearts[0].texture;
-                heartsUI[1].texture = hearts[2].texture;
-                heartsUI[2].texture = hearts[2].texture;
+                m_HeartsUI[0].texture = m_Hearts[0].texture;
+                m_HeartsUI[1].texture = m_Hearts[2].texture;
+                m_HeartsUI[2].texture = m_Hearts[2].texture;
                 break;
             case 3:
-                heartsUI[0].texture = hearts[0].texture;
-                heartsUI[1].texture = hearts[1].texture;
-                heartsUI[2].texture = hearts[2].texture;
+                m_HeartsUI[0].texture = m_Hearts[0].texture;
+                m_HeartsUI[1].texture = m_Hearts[1].texture;
+                m_HeartsUI[2].texture = m_Hearts[2].texture;
                 break;
             case 2:
-                heartsUI[0].texture = hearts[0].texture;
-                heartsUI[1].texture = hearts[0].texture;
-                heartsUI[2].texture = hearts[2].texture;
+                m_HeartsUI[0].texture = m_Hearts[0].texture;
+                m_HeartsUI[1].texture = m_Hearts[0].texture;
+                m_HeartsUI[2].texture = m_Hearts[2].texture;
                 break;
             case 1:
-                heartsUI[0].texture = hearts[0].texture;
-                heartsUI[1].texture = hearts[0].texture;
-                heartsUI[2].texture = hearts[1].texture;
+                m_HeartsUI[0].texture = m_Hearts[0].texture;
+                m_HeartsUI[1].texture = m_Hearts[0].texture;
+                m_HeartsUI[2].texture = m_Hearts[1].texture;
                 break;
         }
     }
@@ -109,10 +109,10 @@ public class UIManager : MonoBehaviour
 
     private void StartClient()
     {
-        var ip = inputFieldIP.text;
+        var ip = m_InputFieldIP.text;
         if (!string.IsNullOrEmpty(ip))
         {
-            transport.ConnectionData.Address = ip;
+            m_Transport.ConnectionData.Address = ip;
         }
         NetworkManager.Singleton.StartClient();
         ActivateInGameHUD();

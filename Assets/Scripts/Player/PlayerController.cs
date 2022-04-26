@@ -3,7 +3,11 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using Unity.Netcode;
+using System;
 
+/// <summary>
+/// Class controlling the movement of the player and the changes to the animator
+/// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(CapsuleCollider2D))]
 [RequireComponent(typeof(InputHandler))]
@@ -12,25 +16,30 @@ public class PlayerController : NetworkBehaviour
 
     #region Variables
 
-    readonly float speed = 3.4f;
-    readonly float jumpHeight = 6.5f;
-    readonly float gravity = 1.5f;
-    readonly int maxJumps = 2;
+    readonly float m_Speed = 3.4f;
+    readonly float m_JumpHeigth = 6.5f;
+    readonly float m_Gravity = 1.5f;
+    readonly int m_MaxJumps = 2;
 
-    LayerMask _layer;
-    int _jumpsLeft;
+    LayerMask m_Layer;
+    int m_JumpsLeft;
 
     // https://docs.unity3d.com/2020.3/Documentation/ScriptReference/ContactFilter2D.html
-    ContactFilter2D filter;
-    InputHandler handler;
-    Player player;
-    Rigidbody2D rb;
-    new CapsuleCollider2D collider;
-    Animator anim;
-    SpriteRenderer spriteRenderer;
+    ContactFilter2D m_Filter;
+    InputHandler m_Handler;
+    Player m_Player;
+    Rigidbody2D m_Body;
+    new CapsuleCollider2D m_Collider;
+    Animator m_Animator;
+    SpriteRenderer m_SpriteRenderer;
 
     // https://docs-multiplayer.unity3d.com/netcode/current/basics/networkvariable
-    NetworkVariable<bool> FlipSprite;
+    NetworkVariable<bool> m_FlipSprite;
+
+    NetworkVariable<Vector2> m_NetworkVel;
+
+
+    //NetworkVariable<Vector2> m_PlayerPos;
 
     #endregion
 
@@ -38,49 +47,60 @@ public class PlayerController : NetworkBehaviour
 
     private void Awake()
     {
-        rb = GetComponent<Rigidbody2D>();
-        collider = GetComponent<CapsuleCollider2D>();
-        handler = GetComponent<InputHandler>();
-        player = GetComponent<Player>();
-        anim = GetComponent<Animator>();
-        spriteRenderer = GetComponent<SpriteRenderer>();
+        m_Body = GetComponent<Rigidbody2D>();
+        m_Collider = GetComponent<CapsuleCollider2D>();
+        m_Handler = GetComponent<InputHandler>();
+        m_Player = GetComponent<Player>();
+        m_Animator = GetComponent<Animator>();
+        m_SpriteRenderer = GetComponent<SpriteRenderer>();
 
-        FlipSprite = new NetworkVariable<bool>();
+        m_FlipSprite = new NetworkVariable<bool>();
+
+        m_NetworkVel = new NetworkVariable<Vector2>();
     }
 
     private void OnEnable()
     {
-        handler.OnMove.AddListener(UpdatePlayerVisualsServerRpc);
-        handler.OnJump.AddListener(PerformJumpServerRpc);
-        handler.OnMoveFixedUpdate.AddListener(UpdatePlayerPositionServerRpc);
+        m_Handler.OnMove.AddListener(UpdatePlayerVisualsServerRpc);
+        m_Handler.OnJump.AddListener(PerformJumpServerRpc);
+        m_Handler.OnMoveFixedUpdate.AddListener(UpdatePlayerPositionServerRpc);
 
-        FlipSprite.OnValueChanged += OnFlipSpriteValueChanged;
+
+        m_FlipSprite.OnValueChanged += OnFlipSpriteValueChanged;
+
+        m_NetworkVel.OnValueChanged += UpdateClientVelocity;
     }
+
 
     private void OnDisable()
     {
-        handler.OnMove.RemoveListener(UpdatePlayerVisualsServerRpc);
-        handler.OnJump.RemoveListener(PerformJumpServerRpc);
-        handler.OnMoveFixedUpdate.RemoveListener(UpdatePlayerPositionServerRpc);
+        m_Handler.OnMove.RemoveListener(UpdatePlayerVisualsServerRpc);
+        m_Handler.OnJump.RemoveListener(PerformJumpServerRpc);
+        m_Handler.OnMoveFixedUpdate.RemoveListener(UpdatePlayerPositionServerRpc);
 
-        FlipSprite.OnValueChanged -= OnFlipSpriteValueChanged;
+        m_FlipSprite.OnValueChanged -= OnFlipSpriteValueChanged;
     }
 
     void Start()
     {
         // Configure Rigidbody2D
-        rb.freezeRotation = true;
-        rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
-        rb.gravityScale = gravity;
+        m_Body.freezeRotation = true;
+        m_Body.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+        m_Body.gravityScale = m_Gravity;
 
         // Configure LayerMask
-        _layer = LayerMask.GetMask("Obstacles");
+        m_Layer = LayerMask.GetMask("Obstacles");
 
         // Configure ContactFilter2D
-        filter.minNormalAngle = 45;
-        filter.maxNormalAngle = 135;
-        filter.useNormalAngle = true;
-        filter.layerMask = _layer;
+        m_Filter.minNormalAngle = 45;
+        m_Filter.maxNormalAngle = 135;
+        m_Filter.useNormalAngle = true;
+        m_Filter.layerMask = m_Layer;
+    }
+    private void FixedUpdate()
+    {
+        if(IsServer)
+        m_NetworkVel.Value = m_Body.velocity;
     }
 
     #endregion
@@ -103,12 +123,12 @@ public class PlayerController : NetworkBehaviour
     {
         if (IsGrounded)
         {
-            anim.SetBool("isGrounded", true);
-            anim.SetBool("isJumping", false);
+            m_Animator.SetBool("isGrounded", true);
+            m_Animator.SetBool("isJumping", false);
         }
         else
         {
-            anim.SetBool("isGrounded", false);
+            m_Animator.SetBool("isGrounded", false);
         }
     }
 
@@ -116,19 +136,19 @@ public class PlayerController : NetworkBehaviour
     [ServerRpc]
     void PerformJumpServerRpc()
     {
-        if (player.State.Value == PlayerState.Grounded)
+        if (m_Player.m_State.Value == PlayerState.Grounded)
         {
-            _jumpsLeft = maxJumps;
+            m_JumpsLeft = m_MaxJumps;
         }
-        else if (_jumpsLeft == 0)
+        else if (m_JumpsLeft == 0)
         {
             return;
         }
 
-        player.State.Value = PlayerState.Jumping;
-        anim.SetBool("isJumping", true);
-        rb.velocity = new Vector2(rb.velocity.x, jumpHeight);
-        _jumpsLeft--;
+        m_Player.m_State.Value = PlayerState.Jumping;
+        m_Animator.SetBool("isJumping", true);
+        m_Body.velocity = new Vector2(m_Body.velocity.x, m_JumpHeigth);
+        m_JumpsLeft--;
     }
 
     // https://docs-multiplayer.unity3d.com/netcode/current/advanced-topics/message-system/serverrpc
@@ -137,14 +157,18 @@ public class PlayerController : NetworkBehaviour
     {
         if (IsGrounded)
         {
-            player.State.Value = PlayerState.Grounded;
+            m_Player.m_State.Value = PlayerState.Grounded;
         }
 
-        if ((player.State.Value != PlayerState.Hooked))
+        if ((m_Player.m_State.Value != PlayerState.Hooked))
         {
-            rb.velocity = new Vector2(input.x * speed, rb.velocity.y);
+            m_Body.velocity = new Vector2(input.x * m_Speed, m_Body.velocity.y);
         }
     }
+
+    #endregion
+    #region ClientRCP
+   
 
     #endregion
 
@@ -156,20 +180,24 @@ public class PlayerController : NetworkBehaviour
     {
         if (input.x < 0)
         {
-            FlipSprite.Value = false;
+            m_FlipSprite.Value = false;
         }
         else if (input.x > 0)
         {
-            FlipSprite.Value = true;
+            m_FlipSprite.Value = true;
         }
     }
 
     void OnFlipSpriteValueChanged(bool previous, bool current)
     {
-        spriteRenderer.flipX = current;
+        m_SpriteRenderer.flipX = current;
+    }
+    private void UpdateClientVelocity(Vector2 previousValue, Vector2 newValue)
+    {
+        m_Body.velocity = newValue;
     }
 
-    bool IsGrounded => collider.IsTouching(filter);
+    bool IsGrounded => m_Collider.IsTouching(m_Filter);
 
     #endregion
 
