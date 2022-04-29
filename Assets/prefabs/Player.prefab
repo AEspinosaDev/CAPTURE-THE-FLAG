@@ -229,7 +229,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5644749167613886767}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e590143bcbf29634fbba7dffecf0ab5a, type: 3}
   m_Name: 
@@ -337,8 +337,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e4216bb7c2d3ccb4ba472d56479bc687, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  crossHair: {fileID: 693612501}
-  weapon: {fileID: 2125255220}
+  m_CrossHair: {fileID: 693612501}
+  m_Weapon: {fileID: 2125255220}
 --- !u!212 &5644749167613886766
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -469,7 +469,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5644749167613886767}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e96cb6065543e43c4a752faaa1468eb1, type: 3}
   m_Name: 

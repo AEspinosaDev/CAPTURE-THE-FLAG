@@ -2,8 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Netcode;
-
-
+using UnityEngine.Events;
 
 /// <summary>
 /// Central class that controls the flow of the game
@@ -14,9 +13,11 @@ public class GameManager : MonoBehaviour
 
     [SerializeField] GameObject m_PlayerPrefab;
 
+    //UnityEvent OnPlayerCreated;
+
     private void Start()
     {
-        print("started");
+        //print("started");
     }
     private void OnEnable()
     {
@@ -51,9 +52,13 @@ public class GameManager : MonoBehaviour
         if (m_NetWorkManager.IsServer)
         {
             var player = Instantiate(m_PlayerPrefab);
+
+
             player.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId);
+            
 
         }
 
     }
+    
 }

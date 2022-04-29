@@ -36,10 +36,8 @@ public class PlayerController : NetworkBehaviour
     // https://docs-multiplayer.unity3d.com/netcode/current/basics/networkvariable
     NetworkVariable<bool> m_FlipSprite;
 
-    NetworkVariable<Vector2> m_NetworkVel;
 
 
-    //NetworkVariable<Vector2> m_PlayerPos;
 
     #endregion
 
@@ -56,7 +54,6 @@ public class PlayerController : NetworkBehaviour
 
         m_FlipSprite = new NetworkVariable<bool>();
 
-        m_NetworkVel = new NetworkVariable<Vector2>();
     }
 
     private void OnEnable()
@@ -68,7 +65,7 @@ public class PlayerController : NetworkBehaviour
 
         m_FlipSprite.OnValueChanged += OnFlipSpriteValueChanged;
 
-        m_NetworkVel.OnValueChanged += UpdateClientVelocity;
+        //m_NetworkVel.OnValueChanged += UpdateClientVelocity;
     }
 
 
@@ -99,8 +96,8 @@ public class PlayerController : NetworkBehaviour
     }
     private void FixedUpdate()
     {
-        if(IsServer)
-        m_NetworkVel.Value = m_Body.velocity;
+        //if(IsServer)
+        //m_NetworkVel.Value = m_Body.velocity;
     }
 
     #endregion
@@ -155,7 +152,7 @@ public class PlayerController : NetworkBehaviour
     [ServerRpc]
     void UpdatePlayerPositionServerRpc(Vector2 input)
     {
-        if (IsGrounded)
+        if (IsGrounded) 
         {
             m_Player.m_State.Value = PlayerState.Grounded;
         }
@@ -192,10 +189,10 @@ public class PlayerController : NetworkBehaviour
     {
         m_SpriteRenderer.flipX = current;
     }
-    private void UpdateClientVelocity(Vector2 previousValue, Vector2 newValue)
-    {
-        m_Body.velocity = newValue;
-    }
+    //private void UpdateClientVelocity(Vector2 previousValue, Vector2 newValue)
+    //{
+    //    m_Body.velocity = newValue;
+    //}
 
     bool IsGrounded => m_Collider.IsTouching(m_Filter);
 

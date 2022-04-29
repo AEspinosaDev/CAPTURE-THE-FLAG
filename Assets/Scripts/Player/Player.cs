@@ -17,15 +17,28 @@ public class Player : NetworkBehaviour
 
     private void Awake()
     {
-        NetworkManager.OnClientConnectedCallback += ConfigurePlayer();
-
+        //NetworkManager.OnClientConnectedCallback += ConfigurePlayer;
+        
+        
+        
         m_State = new NetworkVariable<PlayerState>();
+    }
+    private void Start()
+    {
+        print("CAMARA READY");
+        if (IsLocalPlayer)
+        {
+            ConfigurePlayer();
+            ConfigureCamera();
+            ConfigureControls();
+        }
     }
 
     private void OnEnable()
     {
         // https://docs-multiplayer.unity3d.com/netcode/current/api/Unity.Netcode.NetworkVariable-1.OnValueChangedDelegate
         m_State.OnValueChanged += OnPlayerStateValueChanged;
+
     }
 
     private void OnDisable()
@@ -33,13 +46,27 @@ public class Player : NetworkBehaviour
         // https://docs-multiplayer.unity3d.com/netcode/current/api/Unity.Netcode.NetworkVariable-1.OnValueChangedDelegate
         m_State.OnValueChanged -= OnPlayerStateValueChanged;
     }
+    public void OnStartLocalPlayer()
+    {
+            print("CAMARA READY");
+        if (IsLocalPlayer)
+        {
+            ConfigurePlayer();
+            ConfigureCamera();
+            ConfigureControls();
+        }
+
+    }
+    
 
     #endregion
 
     #region Config Methods
 
-    void ConfigurePlayer(ulong clientID)
+    public void ConfigurePlayer(ulong clientID)
     {
+        print("CAMARA READY");
+
         if (IsLocalPlayer)
         {
             ConfigurePlayer();
@@ -55,11 +82,15 @@ public class Player : NetworkBehaviour
 
     void ConfigureCamera()
     {
-        // https://docs.unity3d.com/Packages/com.unity.cinemachine@2.6/manual/CinemachineBrainProperties.html
-        var virtualCam = Camera.main.GetComponent<CinemachineBrain>().ActiveVirtualCamera;
+      
+        
+            // https://docs.unity3d.com/Packages/com.unity.cinemachine@2.6/manual/CinemachineBrainProperties.html
+            var virtualCam = Camera.main.GetComponent<CinemachineBrain>().ActiveVirtualCamera;
 
-        virtualCam.LookAt = transform;
-        virtualCam.Follow = transform;
+            virtualCam.LookAt = transform;
+            virtualCam.Follow = transform;
+        
+
     }
 
     void ConfigureControls()

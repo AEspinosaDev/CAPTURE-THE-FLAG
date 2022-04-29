@@ -6,10 +6,12 @@ public class WeaponAim : NetworkBehaviour
 
     #region Variables
 
-    [SerializeField] Transform crossHair;
-    [SerializeField] Transform weapon;
-    SpriteRenderer weaponRenderer;
-    InputHandler handler;
+    [SerializeField] Transform m_CrossHair;
+    [SerializeField] Transform m_Weapon;
+
+    SpriteRenderer m_WeaponRenderer;
+
+    InputHandler m_Handler;
 
     #endregion
 
@@ -17,18 +19,28 @@ public class WeaponAim : NetworkBehaviour
 
     private void Awake()
     {
-        handler = GetComponent<InputHandler>();
-        weaponRenderer = weapon.gameObject.GetComponent<SpriteRenderer>();
+        m_Handler = GetComponent<InputHandler>();
+        m_WeaponRenderer = m_Weapon.gameObject.GetComponent<SpriteRenderer>();
+
+
+    }
+    private void Start()
+    {
+        //Check if player is not local in order to hide enemies crosshairs
+        if (!IsLocalPlayer)
+        {
+            m_CrossHair.gameObject.GetComponent<SpriteRenderer>().enabled = false;
+        }
     }
 
     private void OnEnable()
     {
-        handler.OnMousePosition.AddListener(UpdateCrosshairPosition);
+        m_Handler.OnMousePosition.AddListener(UpdateCrosshairPosition);
     }
 
     private void OnDisable()
     {
-        handler.OnMousePosition.RemoveListener(UpdateCrosshairPosition);
+        m_Handler.OnMousePosition.RemoveListener(UpdateCrosshairPosition);
     }
 
     #endregion
@@ -39,7 +51,10 @@ public class WeaponAim : NetworkBehaviour
     {
         // https://docs.unity3d.com/2020.3/Documentation/ScriptReference/Camera.ScreenToWorldPoint.html
         var worldMousePosition = Camera.main.ScreenToWorldPoint(input);
+
         var facingDirection = worldMousePosition - transform.position;
+
+
         var aimAngle = Mathf.Atan2(facingDirection.y, facingDirection.x);
         if (aimAngle < 0f)
         {
@@ -54,15 +69,15 @@ public class WeaponAim : NetworkBehaviour
 
     void UpdateWeaponOrientation()
     {
-        weapon.right = crossHair.position - weapon.position;
+        m_Weapon.right = m_CrossHair.position - m_Weapon.position;
 
-        if (crossHair.localPosition.x > 0)
+        if (m_CrossHair.localPosition.x > 0)
         {
-            weaponRenderer.flipY = false;
+            m_WeaponRenderer.flipY = false;
         }
         else
         {
-            weaponRenderer.flipY = true;
+            m_WeaponRenderer.flipY = true;
         }
     }
 
@@ -72,7 +87,7 @@ public class WeaponAim : NetworkBehaviour
         var y = transform.position.y + .5f * Mathf.Sin(aimAngle);
 
         var crossHairPosition = new Vector3(x, y, 0);
-        crossHair.transform.position = crossHairPosition;
+        m_CrossHair.transform.position = crossHairPosition;
     }
 
     #endregion

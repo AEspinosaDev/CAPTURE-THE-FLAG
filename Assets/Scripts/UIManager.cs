@@ -31,6 +31,7 @@ public class UIManager : MonoBehaviour
     private void Awake()
     {
         m_Transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
+        NetworkManager.Singleton.OnClientConnectedCallback += test;
     }
 
     private void Start()
@@ -39,6 +40,8 @@ public class UIManager : MonoBehaviour
         m_ButtonClient.onClick.AddListener(() => StartClient());
         m_ButtonServer.onClick.AddListener(() => StartServer());
         ActivateMainMenu();
+
+
     }
 
     #endregion
@@ -114,6 +117,7 @@ public class UIManager : MonoBehaviour
         {
             m_Transport.ConnectionData.Address = ip;
         }
+       
         NetworkManager.Singleton.StartClient();
         ActivateInGameHUD();
     }
@@ -123,7 +127,10 @@ public class UIManager : MonoBehaviour
         NetworkManager.Singleton.StartServer();
         ActivateInGameHUD();
     }
-
+    private void test(ulong id)
+    {
+        print("noo");
+    }
     #endregion
 
 }
