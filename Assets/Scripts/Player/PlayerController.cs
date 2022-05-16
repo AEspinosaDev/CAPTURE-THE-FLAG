@@ -5,6 +5,7 @@ using UnityEngine.InputSystem;
 using Unity.Netcode;
 using System;
 
+
 /// <summary>
 /// Class controlling the movement of the player and the changes to the animator
 /// </summary>
@@ -58,10 +59,12 @@ public class PlayerController : NetworkBehaviour
 
     private void OnEnable()
     {
-        m_Handler.OnMove.AddListener(UpdatePlayerVisualsServerRpc);
-        m_Handler.OnJump.AddListener(PerformJumpServerRpc);
-        m_Handler.OnMoveFixedUpdate.AddListener(UpdatePlayerPositionServerRpc);
-
+        if (IsOwner)
+        {
+            m_Handler.OnMove.AddListener(UpdatePlayerVisualsServerRpc);
+            m_Handler.OnJump.AddListener(PerformJumpServerRpc);
+            m_Handler.OnMoveFixedUpdate.AddListener(UpdatePlayerPositionServerRpc);
+        }
 
         m_FlipSprite.OnValueChanged += OnFlipSpriteValueChanged;
 
@@ -71,15 +74,24 @@ public class PlayerController : NetworkBehaviour
 
     private void OnDisable()
     {
-        m_Handler.OnMove.RemoveListener(UpdatePlayerVisualsServerRpc);
-        m_Handler.OnJump.RemoveListener(PerformJumpServerRpc);
-        m_Handler.OnMoveFixedUpdate.RemoveListener(UpdatePlayerPositionServerRpc);
-
+        if (IsOwner)
+        {
+            m_Handler.OnMove.RemoveListener(UpdatePlayerVisualsServerRpc);
+            m_Handler.OnJump.RemoveListener(PerformJumpServerRpc);
+            m_Handler.OnMoveFixedUpdate.RemoveListener(UpdatePlayerPositionServerRpc);
+        }
         m_FlipSprite.OnValueChanged -= OnFlipSpriteValueChanged;
     }
 
     void Start()
     {
+        if (IsOwner)
+        {
+            m_Handler.OnMove.AddListener(UpdatePlayerVisualsServerRpc);
+            m_Handler.OnJump.AddListener(PerformJumpServerRpc);
+            m_Handler.OnMoveFixedUpdate.AddListener(UpdatePlayerPositionServerRpc);
+        }
+
         // Configure Rigidbody2D
         m_Body.freezeRotation = true;
         m_Body.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
@@ -152,7 +164,7 @@ public class PlayerController : NetworkBehaviour
     [ServerRpc]
     void UpdatePlayerPositionServerRpc(Vector2 input)
     {
-        if (IsGrounded) 
+        if (IsGrounded)
         {
             m_Player.m_State.Value = PlayerState.Grounded;
         }
@@ -165,7 +177,7 @@ public class PlayerController : NetworkBehaviour
 
     #endregion
     #region ClientRCP
-   
+
 
     #endregion
 

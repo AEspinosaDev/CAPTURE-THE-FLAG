@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Cinemachine;
 using Unity.Netcode;
+using UnityEngine.UI;
 
 public class Player : NetworkBehaviour
 {
@@ -11,27 +12,32 @@ public class Player : NetworkBehaviour
     // https://docs-multiplayer.unity3d.com/netcode/current/basics/networkvariable
     public NetworkVariable<PlayerState> m_State;
 
+    public string m_NickNameString;
+    public TextMesh m_PlayerName;
     #endregion
 
+   
     #region Unity Event Functions
+
+
 
     private void Awake()
     {
         //NetworkManager.OnClientConnectedCallback += ConfigurePlayer;
-        
-        
-        
+        m_PlayerName = GetComponentInChildren<TextMesh>();
         m_State = new NetworkVariable<PlayerState>();
     }
     private void Start()
     {
         print("CAMARA READY");
+        //print(IsOwner);
         if (IsLocalPlayer)
         {
             ConfigurePlayer();
             ConfigureCamera();
             ConfigureControls();
         }
+        m_PlayerName.text = m_NickNameString;
     }
 
     private void OnEnable()
@@ -46,18 +52,7 @@ public class Player : NetworkBehaviour
         // https://docs-multiplayer.unity3d.com/netcode/current/api/Unity.Netcode.NetworkVariable-1.OnValueChangedDelegate
         m_State.OnValueChanged -= OnPlayerStateValueChanged;
     }
-    public void OnStartLocalPlayer()
-    {
-            print("CAMARA READY");
-        if (IsLocalPlayer)
-        {
-            ConfigurePlayer();
-            ConfigureCamera();
-            ConfigureControls();
-        }
-
-    }
-    
+   
 
     #endregion
 

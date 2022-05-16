@@ -57,24 +57,37 @@ public class GrapplingHook : NetworkBehaviour
 
     private void OnEnable()
     {
-        handler.OnHookRender.AddListener(UpdateHookServerRpc);
-        handler.OnMoveFixedUpdate.AddListener(SwingRopeServerRpc);
-        handler.OnJump.AddListener(JumpPerformedServerRpc);
-        handler.OnHook.AddListener(LaunchHookServerRpc);
-
+        if (IsOwner)
+        {
+            handler.OnHookRender.AddListener(UpdateHookServerRpc);
+            handler.OnMoveFixedUpdate.AddListener(SwingRopeServerRpc);
+            handler.OnJump.AddListener(JumpPerformedServerRpc);
+            handler.OnHook.AddListener(LaunchHookServerRpc);
+        }
         ropeDistance.OnValueChanged += OnRopeDistanceValueChanged;
     }
 
     private void OnDisable()
     {
-        handler.OnHookRender.RemoveListener(UpdateHookServerRpc);
-        handler.OnMoveFixedUpdate.RemoveListener(SwingRopeServerRpc);
-        handler.OnJump.RemoveListener(JumpPerformedServerRpc);
-        handler.OnHook.RemoveListener(LaunchHookServerRpc);
-
+        if (IsOwner)
+        {
+            handler.OnHookRender.RemoveListener(UpdateHookServerRpc);
+            handler.OnMoveFixedUpdate.RemoveListener(SwingRopeServerRpc);
+            handler.OnJump.RemoveListener(JumpPerformedServerRpc);
+            handler.OnHook.RemoveListener(LaunchHookServerRpc);
+        }
         ropeDistance.OnValueChanged -= OnRopeDistanceValueChanged;
     }
-
+    private void Start()
+    {
+        if (IsOwner)
+        {
+            handler.OnHookRender.RemoveListener(UpdateHookServerRpc);
+            handler.OnMoveFixedUpdate.RemoveListener(SwingRopeServerRpc);
+            handler.OnJump.RemoveListener(JumpPerformedServerRpc);
+            handler.OnHook.RemoveListener(LaunchHookServerRpc);
+        }
+    }
     #endregion
 
     #region Netcode RPC
@@ -128,6 +141,7 @@ public class GrapplingHook : NetworkBehaviour
     [ServerRpc]
     void SwingRopeServerRpc(Vector2 input)
     {
+
         if (player.m_State.Value == PlayerState.Hooked)
         {
             // Player 2 hook direction
@@ -140,6 +154,7 @@ public class GrapplingHook : NetworkBehaviour
 
             rb.AddForce(force, ForceMode2D.Force);
         }
+
     }
 
     #endregion
