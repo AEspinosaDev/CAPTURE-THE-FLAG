@@ -27,13 +27,14 @@ public class UIManager : MonoBehaviour
     [SerializeField] private Button m_ButtonClient;
     [SerializeField] private Button m_ButtonServer;
     [SerializeField] private InputField m_InputFieldIP;
-    [SerializeField] private InputField m_InputFieldName;
+    [SerializeField] public InputField m_InputFieldName;
 
-    [SerializeField] private Text m_UserNickName;
+    [SerializeField] public Text m_PlayerNickName;
 
     [Header("In-Game HUD")]
     [SerializeField] private GameObject m_InGameHUD;
     [SerializeField] RawImage[] m_HeartsUI = new RawImage[3];
+    [SerializeField] public Text m_NumPlayers;
 
     #endregion
 
@@ -53,6 +54,7 @@ public class UIManager : MonoBehaviour
         m_ButtonHost.onClick.AddListener(() => StartHost());
         m_ButtonClient.onClick.AddListener(() => StartClient());
         m_ButtonServer.onClick.AddListener(() => StartServer());
+
         //ActivateMainMenu();
 
 
@@ -62,7 +64,11 @@ public class UIManager : MonoBehaviour
 
     #region UI Related Methods
 
-
+    public void UpdatePlayerNumber(int num)
+    {
+        m_NumPlayers.text = num.ToString() + "/6 PLAYERS";
+          
+    }
     private void ActivateMainMenu()
     {
 
@@ -71,8 +77,8 @@ public class UIManager : MonoBehaviour
             m_LoginMenu.SetActive(false);
             m_MainMenu.SetActive(true);
             m_InGameHUD.SetActive(false);
-            m_UserNickName.text = "Welcome "+m_InputFieldName.text;
-            m_GameManager.m_PlayerNickName = m_InputFieldName.text;
+            m_PlayerNickName.text = "Welcome "+m_InputFieldName.text;
+            m_GameManager.m_LocalPlayerNickName = m_InputFieldName.text;
             m_InputFieldIP.placeholder.GetComponent<Text>().text = m_Transport.ConnectionData.Address;
         }
         else

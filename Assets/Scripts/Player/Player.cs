@@ -4,16 +4,23 @@ using UnityEngine;
 using Cinemachine;
 using Unity.Netcode;
 using UnityEngine.UI;
+using Unity.Collections;
 
 public class Player : NetworkBehaviour
 {
     #region Variables
 
-    // https://docs-multiplayer.unity3d.com/netcode/current/basics/networkvariable
-    public NetworkVariable<PlayerState> m_State;
 
-    public string m_NickNameString;
-    public TextMesh m_PlayerName;
+    // https://docs-multiplayer.unity3d.com/netcode/current/basics/networkvariable
+    [SerializeField]public NetworkVariable<PlayerState> m_State;
+
+    [SerializeField]public TextMesh m_PlayerName;
+
+    //private GameManager m_GameManager;
+
+    public NetworkVariable<FixedString64Bytes> m_Text;
+
+    
     #endregion
 
    
@@ -26,24 +33,26 @@ public class Player : NetworkBehaviour
         //NetworkManager.OnClientConnectedCallback += ConfigurePlayer;
         m_PlayerName = GetComponentInChildren<TextMesh>();
         m_State = new NetworkVariable<PlayerState>();
+        m_Text = new NetworkVariable<FixedString64Bytes>();
     }
     private void Start()
     {
-        print("CAMARA READY");
         //print(IsOwner);
         if (IsLocalPlayer)
         {
             ConfigurePlayer();
             ConfigureCamera();
             ConfigureControls();
+
         }
-        m_PlayerName.text = m_NickNameString;
+        
     }
 
     private void OnEnable()
     {
         // https://docs-multiplayer.unity3d.com/netcode/current/api/Unity.Netcode.NetworkVariable-1.OnValueChangedDelegate
         m_State.OnValueChanged += OnPlayerStateValueChanged;
+        m_Text.OnValueChanged += OnPlayerNameChanged;
 
     }
 
@@ -73,6 +82,8 @@ public class Player : NetworkBehaviour
     void ConfigurePlayer()
     {
         UpdatePlayerStateServerRpc(PlayerState.Grounded);
+
+        if (IsLocalPlayer) UpdateMyNameServerRpc(FindObjectOfType<GameManager>().m_LocalPlayerNickName, NetworkObjectId);
     }
 
     void ConfigureCamera()
@@ -97,7 +108,7 @@ public class Player : NetworkBehaviour
 
     #region RPC
 
-    #region ServerRPC
+   
 
     // https://docs-multiplayer.unity3d.com/netcode/current/advanced-topics/message-system/serverrpc
     [ServerRpc]
@@ -105,8 +116,22 @@ public class Player : NetworkBehaviour
     {
         m_State.Value = state;
     }
+    [ServerRpc]
+    public void UpdateMyNameServerRpc(string name, ulong clientId)
+    {
+        print("pETICION A SERVER");
+        if (NetworkObjectId == clientId) m_PlayerName.text = name;
+        UpdateSpecificPlayerNameClientRpc(name,clientId);
 
-    #endregion
+    }
+    [ClientRpc]
+    public void UpdateSpecificPlayerNameClientRpc(string name, ulong clientId)
+    {
+        print("pETICION A CLIENTES "+clientId+name);
+        if (NetworkObjectId == clientId) m_PlayerName.text = name;
+
+    }
+
 
     #endregion
 
@@ -116,6 +141,10 @@ public class Player : NetworkBehaviour
     void OnPlayerStateValueChanged(PlayerState previous, PlayerState current)
     {
         m_State.Value = current;
+    }
+    void OnPlayerNameChanged(FixedString64Bytes old, FixedString64Bytes current)
+    {
+        m_Text.Value = current;
     }
 
     #endregion

@@ -4,6 +4,7 @@ using UnityEngine;
 using Unity.Netcode;
 using UnityEngine.Events;
 using UnityEngine.UI;
+using System;
 
 /// <summary>
 /// Central class that controls the flow of the game
@@ -11,10 +12,14 @@ using UnityEngine.UI;
 public class GameManager : MonoBehaviour
 {
     [SerializeField] NetworkManager m_NetWorkManager;
+    [SerializeField] PlayerManager m_PlayerManager;
+    [SerializeField] UIManager m_UIManager;
 
     [SerializeField] GameObject m_PlayerPrefab;
 
-    [HideInInspector]public string m_PlayerNickName;
+    [SerializeField] private List<Transform> m_SpawnPoints;
+
+    [HideInInspector] public string m_LocalPlayerNickName;
 
     //UnityEvent OnPlayerCreated;
 
@@ -26,14 +31,15 @@ public class GameManager : MonoBehaviour
     {
         m_NetWorkManager.OnServerStarted += OnServerReady;
         m_NetWorkManager.OnClientConnectedCallback += OnClientConnected;
+        m_NetWorkManager.OnClientDisconnectCallback += OnClientDisconnected;
+       
     }
-
-
     private void OnDisable()
     {
 
         //networkManager.OnServerStarted -= OnServerReady;
         m_NetWorkManager.OnClientConnectedCallback -= OnClientConnected;
+        m_NetWorkManager.OnClientDisconnectCallback -= OnClientDisconnected;
     }
 
     /// <summary>
@@ -49,44 +55,31 @@ public class GameManager : MonoBehaviour
     /// </summary>
     private void OnClientConnected(ulong clientId)
     {
-        //if(m_NetWorkManager.)
-        if (m_NetWorkManager.IsServer)
-        {
+        if (!m_NetWorkManager.IsServer) return;
 
-            ulong[] target = { clientId };
-            ClientRpcParams rpcParams = default;
-            rpcParams.Send.TargetClientIds = target;
+        var player = Instantiate(m_PlayerPrefab,m_SpawnPoints[m_PlayerManager.m_NumPlayers]);
 
-            GetNameClientRPC(clientId,rpcParams);
-
-
-            //Primero se instancia en unity y luegose le dice a su network object que lo instancie a todos
-
-            //var player = Instantiate(m_PlayerPrefab);
-
-            //player.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId);
-
-
-        }
-
-    }
-    #region RPCs
-
-    [ClientRpc]
-    private void GetNameClientRPC(ulong clientId, ClientRpcParams rpcParams = default)
-    {
-        BroadcastClientInstanceServerRPC(m_PlayerNickName, clientId);
-    }
-    [ServerRpc]
-    private void BroadcastClientInstanceServerRPC(string playerName, ulong clientId)
-    {
-        var player = Instantiate(m_PlayerPrefab);
-        print(playerName);
-        player.GetComponent<Player>().m_NickNameString=playerName;
-        
+        player.GetComponent<Player>().m_PlayerName.text = clientId.ToString();
         player.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId);
+
+        m_PlayerManager.m_NumPlayers++;
+        m_PlayerManager.UpdatePlayerNumberClientRPC(m_PlayerManager.m_NumPlayers);
+        m_UIManager.UpdatePlayerNumber(m_PlayerManager.m_NumPlayers);
+
     }
-    #endregion
+
+    private void OnClientDisconnected(ulong obj)
+    {
+        if (!m_NetWorkManager.IsServer) return;
+
+
+        m_PlayerManager.m_NumPlayers--;
+        m_PlayerManager.UpdatePlayerNumberClientRPC(m_PlayerManager.m_NumPlayers);
+        m_UIManager.UpdatePlayerNumber(m_PlayerManager.m_NumPlayers);
+
+    }
+
+
 
 
 }
