@@ -5,22 +5,28 @@ using UnityEngine;
 public class PlayerManager : NetworkBehaviour
 {
 
-    [SerializeField] private UIManager m_UIManager;
+    [HideInInspector] private UIManager m_UIManager;
 
-    [HideInInspector] public Dictionary<uint, string> m_PlayerNames;
+    [HideInInspector] public Dictionary<ulong, string> m_PlayerNames;
 
     [HideInInspector] public int m_NumPlayers;
 
+    private void Start()
+    {
+        m_UIManager = FindObjectOfType<UIManager>();
+    }
     #region RPC
     [ClientRpc]
     public void UpdatePlayerNumberClientRPC(int num)
     {
         m_UIManager.UpdatePlayerNumber(num);
     }
-    //[ClientRpc]
-    //public void UpdatePlayerNamesClientRPC(Dictionary<uint, string> playerNames)
-    //{
-
-    //}
+    [ClientRpc]
+    public void ShowDisconnectedClientRPC(ulong id)
+    {
+        string name;
+        m_PlayerNames.TryGetValue(id, out name);
+        print(name + " SE HA IDO");
+    }
     #endregion
 }

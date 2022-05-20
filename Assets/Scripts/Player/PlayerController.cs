@@ -64,6 +64,7 @@ public class PlayerController : NetworkBehaviour
             m_Handler.OnMove.AddListener(UpdatePlayerVisualsServerRpc);
             m_Handler.OnJump.AddListener(PerformJumpServerRpc);
             m_Handler.OnMoveFixedUpdate.AddListener(UpdatePlayerPositionServerRpc);
+           
         }
 
         m_FlipSprite.OnValueChanged += OnFlipSpriteValueChanged;
@@ -106,12 +107,7 @@ public class PlayerController : NetworkBehaviour
         m_Filter.useNormalAngle = true;
         m_Filter.layerMask = m_Layer;
     }
-    private void FixedUpdate()
-    {
-        //if(IsServer)
-        //m_NetworkVel.Value = m_Body.velocity;
-    }
-
+   
     #endregion
 
     #region RPC
@@ -174,6 +170,7 @@ public class PlayerController : NetworkBehaviour
             m_Body.velocity = new Vector2(input.x * m_Speed, m_Body.velocity.y);
         }
     }
+    
 
     #endregion
     #region ClientRCP
@@ -201,10 +198,7 @@ public class PlayerController : NetworkBehaviour
     {
         m_SpriteRenderer.flipX = current;
     }
-    //private void UpdateClientVelocity(Vector2 previousValue, Vector2 newValue)
-    //{
-    //    m_Body.velocity = newValue;
-    //}
+   
 
     bool IsGrounded => m_Collider.IsTouching(m_Filter);
 

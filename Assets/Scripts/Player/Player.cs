@@ -12,32 +12,34 @@ public class Player : NetworkBehaviour
 
 
     // https://docs-multiplayer.unity3d.com/netcode/current/basics/networkvariable
-    [SerializeField]public NetworkVariable<PlayerState> m_State;
+    [SerializeField] public NetworkVariable<PlayerState> m_State;
 
-    [SerializeField]public TextMesh m_PlayerName;
+    [SerializeField] public TextMesh m_PlayerName;
 
-    //private GameManager m_GameManager;
+    private UIManager m_UIManager;
 
     public NetworkVariable<FixedString64Bytes> m_Text;
 
-    
+
     #endregion
 
-   
+
     #region Unity Event Functions
 
+    //public override void OnNetworkSpawn()
+    //{
+    //    print("pn network spawn!");
+    //}
 
 
     private void Awake()
     {
-        //NetworkManager.OnClientConnectedCallback += ConfigurePlayer;
         m_PlayerName = GetComponentInChildren<TextMesh>();
         m_State = new NetworkVariable<PlayerState>();
         m_Text = new NetworkVariable<FixedString64Bytes>();
     }
     private void Start()
     {
-        //print(IsOwner);
         if (IsLocalPlayer)
         {
             ConfigurePlayer();
@@ -45,7 +47,7 @@ public class Player : NetworkBehaviour
             ConfigureControls();
 
         }
-        
+
     }
 
     private void OnEnable()
@@ -58,44 +60,36 @@ public class Player : NetworkBehaviour
 
     private void OnDisable()
     {
-        // https://docs-multiplayer.unity3d.com/netcode/current/api/Unity.Netcode.NetworkVariable-1.OnValueChangedDelegate
         m_State.OnValueChanged -= OnPlayerStateValueChanged;
     }
-   
+
 
     #endregion
 
     #region Config Methods
 
-    public void ConfigurePlayer(ulong clientID)
-    {
-        print("CAMARA READY");
-
-        if (IsLocalPlayer)
-        {
-            ConfigurePlayer();
-            ConfigureCamera();
-            ConfigureControls();
-        }
-    }
-
     void ConfigurePlayer()
     {
         UpdatePlayerStateServerRpc(PlayerState.Grounded);
 
-        if (IsLocalPlayer) UpdateMyNameServerRpc(FindObjectOfType<GameManager>().m_LocalPlayerNickName, NetworkObjectId);
+        if (IsLocalPlayer)
+        {
+            GameManager manager = FindObjectOfType<GameManager>();
+            m_UIManager = FindObjectOfType<UIManager>();
+            UpdateMyNameServerRpc(m_UIManager.m_InputFieldName.text, NetworkObjectId);
+            manager.m_LocalPlayer = this;
+        }
     }
 
     void ConfigureCamera()
     {
-      
-        
-            // https://docs.unity3d.com/Packages/com.unity.cinemachine@2.6/manual/CinemachineBrainProperties.html
-            var virtualCam = Camera.main.GetComponent<CinemachineBrain>().ActiveVirtualCamera;
 
-            virtualCam.LookAt = transform;
-            virtualCam.Follow = transform;
-        
+
+        var virtualCam = Camera.main.GetComponent<CinemachineBrain>().ActiveVirtualCamera;
+
+        virtualCam.LookAt = transform;
+        virtualCam.Follow = transform;
+
 
     }
 
@@ -104,31 +98,38 @@ public class Player : NetworkBehaviour
         GetComponent<InputHandler>().enabled = true;
     }
 
+
     #endregion
 
+    public void ComputeDamage()
+    {
+        m_UIManager.m_HitPoints++;
+        m_UIManager.UpdateLifeUI(m_UIManager.m_HitPoints);
+    }
     #region RPC
 
-   
 
-    // https://docs-multiplayer.unity3d.com/netcode/current/advanced-topics/message-system/serverrpc
+
     [ServerRpc]
     public void UpdatePlayerStateServerRpc(PlayerState state)
     {
         m_State.Value = state;
     }
+
     [ServerRpc]
     public void UpdateMyNameServerRpc(string name, ulong clientId)
     {
-        print("pETICION A SERVER");
         if (NetworkObjectId == clientId) m_PlayerName.text = name;
-        UpdateSpecificPlayerNameClientRpc(name,clientId);
+        //FindObjectOfType<PlayerManager>().m_PlayerNames.Add(clientId, name);
+        UpdateSpecificPlayerNameClientRpc(name, clientId);
 
     }
     [ClientRpc]
     public void UpdateSpecificPlayerNameClientRpc(string name, ulong clientId)
     {
-        print("pETICION A CLIENTES "+clientId+name);
         if (NetworkObjectId == clientId) m_PlayerName.text = name;
+        //FindObjectOfType<PlayerManager>().m_PlayerNames.Add(clientId, name);
+        print(name + " HA LLEGADO");
 
     }
 
@@ -137,10 +138,10 @@ public class Player : NetworkBehaviour
 
     #region Netcode Related Methods
 
-    // https://docs-multiplayer.unity3d.com/netcode/current/advanced-topics/message-system/serverrpc
     void OnPlayerStateValueChanged(PlayerState previous, PlayerState current)
     {
-        m_State.Value = current;
+        //m_State.Value = current;
+        print(m_State.Value);
     }
     void OnPlayerNameChanged(FixedString64Bytes old, FixedString64Bytes current)
     {

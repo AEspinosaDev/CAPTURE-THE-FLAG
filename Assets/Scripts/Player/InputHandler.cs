@@ -22,7 +22,7 @@ public class InputHandler : NetworkBehaviour
     public UnityEvent<Vector2> OnHook;
     public UnityEvent<Vector2> OnHookRender;
     public UnityEvent OnJump;
-    public UnityEvent OnFire;
+    public UnityEvent <Vector2,ulong>OnFire;
 
     Vector2 CachedMoveInput { get; set; }
 
@@ -80,7 +80,7 @@ public class InputHandler : NetworkBehaviour
             if (hookPerformed) { Hook(screenPoint); }
 
             if (jumpPerformed) { Jump(); }
-            if (_fire.WasPerformedThisFrame()) { Fire(); }
+            if (_fire.WasPerformedThisFrame()) { Fire(screenPoint,OwnerClientId); }
 
             HookRender(CachedMoveInput);
         }
@@ -120,9 +120,9 @@ public class InputHandler : NetworkBehaviour
         OnHookRender?.Invoke(input);
     }
 
-    void Fire()
+    void Fire(Vector2 input, ulong id)
     {
-        OnFire?.Invoke();
+        OnFire?.Invoke(input, id);
     }
 
     void MousePosition(Vector2 input)

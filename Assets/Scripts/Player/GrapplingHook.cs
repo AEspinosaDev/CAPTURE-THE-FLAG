@@ -5,24 +5,24 @@ public class GrapplingHook : NetworkBehaviour
 {
     #region Variables
 
-    InputHandler handler;
+    InputHandler m_Handler;
     // https://docs.unity3d.com/2020.3/Documentation/ScriptReference/DistanceJoint2D.html
-    DistanceJoint2D rope;
+    DistanceJoint2D m_Rope;
     // // https://docs.unity3d.com/2020.3/Documentation/ScriptReference/LineRenderer.html
-    LineRenderer ropeRenderer;
-    Transform playerTransform;
-    [SerializeField] Material material;
+    LineRenderer m_RopeRenderer;
+    Transform m_PlayerTransform;
+    [SerializeField] Material m_Mat;
     // https://docs.unity3d.com/2020.3/Documentation/ScriptReference/LayerMask.html
-    LayerMask layer;
-    Player player;
+    LayerMask m_Layer;
+    Player m_Player;
 
-    readonly float climbSpeed = 2f;
-    readonly float swingForce = 80f;
+    readonly float m_ClimbSpeed = 2f;
+    readonly float m_SwingForce = 80f;
 
-    Rigidbody2D rb;
+    Rigidbody2D m_RBody;
 
     // https://docs-multiplayer.unity3d.com/netcode/current/basics/networkvariable
-    NetworkVariable<float> ropeDistance;
+    NetworkVariable<float> m_RopeDistance;
 
     #endregion
 
@@ -30,62 +30,62 @@ public class GrapplingHook : NetworkBehaviour
 
     void Awake()
     {
-        handler = GetComponent<InputHandler>();
-        player = GetComponent<Player>();
+        m_Handler = GetComponent<InputHandler>();
+        m_Player = GetComponent<Player>();
 
         //Configure Rope Renderer
-        ropeRenderer = gameObject.AddComponent<LineRenderer>();
-        ropeRenderer.startWidth = .05f;
-        ropeRenderer.endWidth = .05f;
-        ropeRenderer.material = material;
-        ropeRenderer.sortingOrder = 3;
-        ropeRenderer.enabled = false;
+        m_RopeRenderer = gameObject.AddComponent<LineRenderer>();
+        m_RopeRenderer.startWidth = .05f;
+        m_RopeRenderer.endWidth = .05f;
+        m_RopeRenderer.material = m_Mat;
+        m_RopeRenderer.sortingOrder = 3;
+        m_RopeRenderer.enabled = false;
 
         // Configure Rope
-        rope = gameObject.AddComponent<DistanceJoint2D>();
-        rope.enableCollision = true;
-        rope.enabled = false;
+        m_Rope = gameObject.AddComponent<DistanceJoint2D>();
+        m_Rope.enableCollision = true;
+        m_Rope.enabled = false;
 
-        playerTransform = transform;
-        layer = LayerMask.GetMask("Obstacles");
+        m_PlayerTransform = transform;
+        m_Layer = LayerMask.GetMask("Obstacles");
 
-        rb = GetComponent<Rigidbody2D>();
-        player = GetComponent<Player>();
+        m_RBody = GetComponent<Rigidbody2D>();
+        m_Player = GetComponent<Player>();
 
-        ropeDistance = new NetworkVariable<float>();
+        m_RopeDistance = new NetworkVariable<float>();
     }
 
     private void OnEnable()
     {
         if (IsOwner)
         {
-            handler.OnHookRender.AddListener(UpdateHookServerRpc);
-            handler.OnMoveFixedUpdate.AddListener(SwingRopeServerRpc);
-            handler.OnJump.AddListener(JumpPerformedServerRpc);
-            handler.OnHook.AddListener(LaunchHookServerRpc);
+            m_Handler.OnHookRender.AddListener(UpdateHookServerRpc);
+            m_Handler.OnMoveFixedUpdate.AddListener(SwingRopeServerRpc);
+            m_Handler.OnJump.AddListener(JumpPerformedServerRpc);
+            m_Handler.OnHook.AddListener(LaunchHookServerRpc);
         }
-        ropeDistance.OnValueChanged += OnRopeDistanceValueChanged;
+        m_RopeDistance.OnValueChanged += OnRopeDistanceValueChanged;
     }
 
     private void OnDisable()
     {
         if (IsOwner)
         {
-            handler.OnHookRender.RemoveListener(UpdateHookServerRpc);
-            handler.OnMoveFixedUpdate.RemoveListener(SwingRopeServerRpc);
-            handler.OnJump.RemoveListener(JumpPerformedServerRpc);
-            handler.OnHook.RemoveListener(LaunchHookServerRpc);
+            m_Handler.OnHookRender.RemoveListener(UpdateHookServerRpc);
+            m_Handler.OnMoveFixedUpdate.RemoveListener(SwingRopeServerRpc);
+            m_Handler.OnJump.RemoveListener(JumpPerformedServerRpc);
+            m_Handler.OnHook.RemoveListener(LaunchHookServerRpc);
         }
-        ropeDistance.OnValueChanged -= OnRopeDistanceValueChanged;
+        m_RopeDistance.OnValueChanged -= OnRopeDistanceValueChanged;
     }
     private void Start()
     {
         if (IsOwner)
         {
-            handler.OnHookRender.RemoveListener(UpdateHookServerRpc);
-            handler.OnMoveFixedUpdate.RemoveListener(SwingRopeServerRpc);
-            handler.OnJump.RemoveListener(JumpPerformedServerRpc);
-            handler.OnHook.RemoveListener(LaunchHookServerRpc);
+            m_Handler.OnHookRender.RemoveListener(UpdateHookServerRpc);
+            m_Handler.OnMoveFixedUpdate.RemoveListener(SwingRopeServerRpc);
+            m_Handler.OnJump.RemoveListener(JumpPerformedServerRpc);
+            m_Handler.OnHook.RemoveListener(LaunchHookServerRpc);
         }
     }
     #endregion
@@ -98,17 +98,17 @@ public class GrapplingHook : NetworkBehaviour
     [ServerRpc]
     void UpdateHookServerRpc(Vector2 input)
     {
-        if (player.m_State.Value == PlayerState.Hooked)
+        if (m_Player.m_State.Value == PlayerState.Hooked)
         {
             ClimbRope(input.y);
             UpdateRopeClientRpc();
 
         }
-        else if (player.m_State.Value == PlayerState.Grounded)
+        else if (m_Player.m_State.Value == PlayerState.Grounded)
         {
             RemoveRopeClientRpc();
-            rope.enabled = false;
-            ropeRenderer.enabled = false;
+            m_Rope.enabled = false;
+            m_RopeRenderer.enabled = false;
         }
     }
 
@@ -117,23 +117,23 @@ public class GrapplingHook : NetworkBehaviour
     void JumpPerformedServerRpc()
     {
         RemoveRopeClientRpc();
-        rope.enabled = false;
-        ropeRenderer.enabled = false;
+        m_Rope.enabled = false;
+        m_RopeRenderer.enabled = false;
     }
 
     // https://docs-multiplayer.unity3d.com/netcode/current/advanced-topics/message-system/serverrpc
     [ServerRpc]
     void LaunchHookServerRpc(Vector2 input)
     {
-        var hit = Physics2D.Raycast(playerTransform.position, input - (Vector2)playerTransform.position, Mathf.Infinity, layer);
+        var hit = Physics2D.Raycast(m_PlayerTransform.position, input - (Vector2)m_PlayerTransform.position, Mathf.Infinity, m_Layer);
 
         if (hit.collider)
         {
             var anchor = hit.centroid;
-            rope.connectedAnchor = anchor;
-            ropeRenderer.SetPosition(1, anchor);
+            m_Rope.connectedAnchor = anchor;
+            m_RopeRenderer.SetPosition(1, anchor);
             UpdateAnchorClientRpc(hit.centroid);
-            player.m_State.Value = PlayerState.Hooked;
+            m_Player.m_State.Value = PlayerState.Hooked;
         }
     }
 
@@ -142,17 +142,17 @@ public class GrapplingHook : NetworkBehaviour
     void SwingRopeServerRpc(Vector2 input)
     {
 
-        if (player.m_State.Value == PlayerState.Hooked)
+        if (m_Player.m_State.Value == PlayerState.Hooked)
         {
             // Player 2 hook direction
-            var direction = (rope.connectedAnchor - (Vector2)playerTransform.position).normalized;
+            var direction = (m_Rope.connectedAnchor - (Vector2)m_PlayerTransform.position).normalized;
 
             // Perpendicular direction
             var forceDirection = new Vector2(input.x * direction.y, direction.x);
 
-            var force = forceDirection * swingForce;
+            var force = forceDirection * m_SwingForce;
 
-            rb.AddForce(force, ForceMode2D.Force);
+            m_RBody.AddForce(force, ForceMode2D.Force);
         }
 
     }
@@ -165,32 +165,32 @@ public class GrapplingHook : NetworkBehaviour
     [ClientRpc]
     void UpdateAnchorClientRpc(Vector2 anchor)
     {
-        rope.connectedAnchor = anchor;
+        m_Rope.connectedAnchor = anchor;
         ShowRopeClientRpc();
-        ropeRenderer.SetPosition(1, anchor);
+        m_RopeRenderer.SetPosition(1, anchor);
     }
 
     // https://docs-multiplayer.unity3d.com/netcode/current/advanced-topics/message-system/clientrpc
     [ClientRpc]
     void UpdateRopeClientRpc()
     {
-        ropeRenderer.SetPosition(0, playerTransform.position);
+        m_RopeRenderer.SetPosition(0, m_PlayerTransform.position);
     }
 
     // https://docs-multiplayer.unity3d.com/netcode/current/advanced-topics/message-system/clientrpc
     [ClientRpc]
     void ShowRopeClientRpc()
     {
-        rope.enabled = true;
-        ropeRenderer.enabled = true;
+        m_Rope.enabled = true;
+        m_RopeRenderer.enabled = true;
     }
 
     // https://docs-multiplayer.unity3d.com/netcode/current/advanced-topics/message-system/clientrpc
     [ClientRpc]
     void RemoveRopeClientRpc()
     {
-        rope.enabled = false;
-        ropeRenderer.enabled = false;
+        m_Rope.enabled = false;
+        m_RopeRenderer.enabled = false;
     }
 
     #endregion
@@ -201,12 +201,12 @@ public class GrapplingHook : NetworkBehaviour
 
     void ClimbRope(float input)
     {
-        ropeDistance.Value = (input) * climbSpeed * Time.deltaTime;
+        m_RopeDistance.Value = (input) * m_ClimbSpeed * Time.deltaTime;
     }
 
     void OnRopeDistanceValueChanged(float previous, float current)
     {
-        rope.distance -= current;
+        m_Rope.distance -= current;
     }
 
     #endregion

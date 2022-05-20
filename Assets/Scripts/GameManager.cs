@@ -19,20 +19,22 @@ public class GameManager : MonoBehaviour
 
     [SerializeField] private List<Transform> m_SpawnPoints;
 
-    [HideInInspector] public string m_LocalPlayerNickName;
+    [HideInInspector] public Player m_LocalPlayer;
+
 
     //UnityEvent OnPlayerCreated;
 
     private void Start()
     {
         //print("started");
+        
     }
     private void OnEnable()
     {
         m_NetWorkManager.OnServerStarted += OnServerReady;
         m_NetWorkManager.OnClientConnectedCallback += OnClientConnected;
         m_NetWorkManager.OnClientDisconnectCallback += OnClientDisconnected;
-       
+
     }
     private void OnDisable()
     {
@@ -47,7 +49,7 @@ public class GameManager : MonoBehaviour
     /// </summary>
     private void OnServerReady()
     {
-        print("Server ready");
+        //var Playe
     }
 
     /// <summary>
@@ -55,11 +57,15 @@ public class GameManager : MonoBehaviour
     /// </summary>
     private void OnClientConnected(ulong clientId)
     {
-        if (!m_NetWorkManager.IsServer) return;
+        if (!m_NetWorkManager.IsServer)
+        { //m_PlayerManager.NetworkObject.ChangeOwnership(clientId);
+            return;
+        }
 
-        var player = Instantiate(m_PlayerPrefab,m_SpawnPoints[m_PlayerManager.m_NumPlayers]);
+        //print(m_NetWorkManager.ConnectedClients.Count);
+        //var player = Instantiate(m_PlayerPrefab, m_SpawnPoints[m_PlayerManager.m_NumPlayers]);
+        var player = Instantiate(m_PlayerPrefab, m_SpawnPoints[m_PlayerManager.m_NumPlayers].position, m_SpawnPoints[m_PlayerManager.m_NumPlayers].rotation);
 
-        player.GetComponent<Player>().m_PlayerName.text = clientId.ToString();
         player.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId);
 
         m_PlayerManager.m_NumPlayers++;
@@ -75,6 +81,7 @@ public class GameManager : MonoBehaviour
 
         m_PlayerManager.m_NumPlayers--;
         m_PlayerManager.UpdatePlayerNumberClientRPC(m_PlayerManager.m_NumPlayers);
+        //m_PlayerManager.ShowDisconnectedClientRPC(obj);
         m_UIManager.UpdatePlayerNumber(m_PlayerManager.m_NumPlayers);
 
     }

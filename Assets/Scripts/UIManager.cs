@@ -35,6 +35,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] private GameObject m_InGameHUD;
     [SerializeField] RawImage[] m_HeartsUI = new RawImage[3];
     [SerializeField] public Text m_NumPlayers;
+    [HideInInspector] public int m_HitPoints=0; 
 
     #endregion
 
@@ -78,17 +79,16 @@ public class UIManager : MonoBehaviour
             m_MainMenu.SetActive(true);
             m_InGameHUD.SetActive(false);
             m_PlayerNickName.text = "Welcome "+m_InputFieldName.text;
-            m_GameManager.m_LocalPlayerNickName = m_InputFieldName.text;
             m_InputFieldIP.placeholder.GetComponent<Text>().text = m_Transport.ConnectionData.Address;
         }
         else
         {
             m_InputFieldName.placeholder.GetComponent<Text>().color = Color.red;
-            StartCoroutine(waitForTime(1.5f));
+            StartCoroutine(ChangeTextColor(1.5f));
 
         }
     }
-    private IEnumerator waitForTime(float waitTime)
+    private IEnumerator ChangeTextColor(float waitTime)
     {
         yield return new WaitForSeconds(waitTime);
         m_InputFieldName.placeholder.GetComponent<Text>().color = Color.black;
@@ -101,7 +101,7 @@ public class UIManager : MonoBehaviour
         m_InGameHUD.SetActive(true);
 
         // for test purposes
-        UpdateLifeUI(Random.Range(1, 6));
+        UpdateLifeUI(m_HitPoints);
     }
 
     public void UpdateLifeUI(int hitpoints)

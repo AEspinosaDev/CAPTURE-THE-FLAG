@@ -92,7 +92,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2125255220}
   - component: {fileID: 2125255221}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Weapon
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -221,10 +221,79 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3f3fe3468cf85f84389fafa8fc846762, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_Manager: {fileID: 0}
   m_State:
     m_InternalValue: 0
   m_PlayerName: {fileID: 2097285004055753146}
+  m_Life: 6
+  m_Text:
+    m_InternalValue:
+      utf8LengthInBytes: 0
+      bytes:
+        offset0000:
+          byte0000: 0
+          byte0001: 0
+          byte0002: 0
+          byte0003: 0
+          byte0004: 0
+          byte0005: 0
+          byte0006: 0
+          byte0007: 0
+          byte0008: 0
+          byte0009: 0
+          byte0010: 0
+          byte0011: 0
+          byte0012: 0
+          byte0013: 0
+          byte0014: 0
+          byte0015: 0
+        offset0016:
+          byte0000: 0
+          byte0001: 0
+          byte0002: 0
+          byte0003: 0
+          byte0004: 0
+          byte0005: 0
+          byte0006: 0
+          byte0007: 0
+          byte0008: 0
+          byte0009: 0
+          byte0010: 0
+          byte0011: 0
+          byte0012: 0
+          byte0013: 0
+          byte0014: 0
+          byte0015: 0
+        offset0032:
+          byte0000: 0
+          byte0001: 0
+          byte0002: 0
+          byte0003: 0
+          byte0004: 0
+          byte0005: 0
+          byte0006: 0
+          byte0007: 0
+          byte0008: 0
+          byte0009: 0
+          byte0010: 0
+          byte0011: 0
+          byte0012: 0
+          byte0013: 0
+          byte0014: 0
+          byte0015: 0
+        byte0048: 0
+        byte0049: 0
+        byte0050: 0
+        byte0051: 0
+        byte0052: 0
+        byte0053: 0
+        byte0054: 0
+        byte0055: 0
+        byte0056: 0
+        byte0057: 0
+        byte0058: 0
+        byte0059: 0
+        byte0060: 0
+        byte0061: 0
 --- !u!114 &169404036177825696
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -327,7 +396,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 02a463fa969cac149a1d07d91d5d36be, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  material: {fileID: 2100000, guid: c636fd2bad8a2a64490da5c38c70d6fa, type: 2}
+  m_Mat: {fileID: 2100000, guid: c636fd2bad8a2a64490da5c38c70d6fa, type: 2}
 --- !u!114 &3112279240633773370
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -342,6 +411,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_CrossHair: {fileID: 693612501}
   m_Weapon: {fileID: 2125255220}
+  m_BulletPrefab: {fileID: 5102091770372451023, guid: 2cfe3fed316b61648945a36617a21427, type: 3}
 --- !u!212 &5644749167613886766
 SpriteRenderer:
   m_ObjectHideFlags: 0
