@@ -4,7 +4,6 @@ using UnityEngine;
 using Unity.Netcode;
 using UnityEngine.Events;
 using UnityEngine.UI;
-using System;
 
 /// <summary>
 /// Central class that controls the flow of the game
@@ -17,18 +16,17 @@ public class GameManager : MonoBehaviour
 
     [SerializeField] GameObject m_PlayerPrefab;
 
-    [SerializeField] private List<Transform> m_SpawnPoints;
+    [SerializeField] public List<Transform> m_SpawnPoints;
 
     [HideInInspector] public Player m_LocalPlayer;
+
+    ////SERVER ONLY
+    [HideInInspector] public Dictionary<ulong, Player> m_Players = new Dictionary<ulong, Player>();
 
 
     //UnityEvent OnPlayerCreated;
 
-    private void Start()
-    {
-        //print("started");
-        
-    }
+   
     private void OnEnable()
     {
         m_NetWorkManager.OnServerStarted += OnServerReady;
@@ -49,7 +47,10 @@ public class GameManager : MonoBehaviour
     /// </summary>
     private void OnServerReady()
     {
-        //var Playe
+        //if (m_NetWorkManager.IsServer)
+        //{
+        //    m_Players = new Dictionary<ulong, Player>();
+        //}
     }
 
     /// <summary>
@@ -62,11 +63,12 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        //print(m_NetWorkManager.ConnectedClients.Count);
-        //var player = Instantiate(m_PlayerPrefab, m_SpawnPoints[m_PlayerManager.m_NumPlayers]);
         var player = Instantiate(m_PlayerPrefab, m_SpawnPoints[m_PlayerManager.m_NumPlayers].position, m_SpawnPoints[m_PlayerManager.m_NumPlayers].rotation);
 
         player.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId);
+
+        m_Players.Add(clientId, player.GetComponent<Player>());
+
 
         m_PlayerManager.m_NumPlayers++;
         m_PlayerManager.UpdatePlayerNumberClientRPC(m_PlayerManager.m_NumPlayers);
@@ -85,8 +87,25 @@ public class GameManager : MonoBehaviour
         m_UIManager.UpdatePlayerNumber(m_PlayerManager.m_NumPlayers);
 
     }
+    public IEnumerator RespawnPlayerInTime(float waitTime, GameObject player)
+    {
+       
+        yield return new WaitForSeconds(waitTime);
+
+        player.transform.position = m_SpawnPoints[Random.Range(0, m_SpawnPoints.Count)].position;
+        player.SetActive(true);
+        player.GetComponent<Player>().RespawnPlayer();
 
 
-
+    }
+    /// <summary>
+    /// Server only.
+    /// </summary>
+    /// <param name="waitTime"></param>
+    /// <param name="player"></param>
+    public void RespawnPlayer(float waitTime, GameObject player)
+    {
+        StartCoroutine(RespawnPlayerInTime(waitTime, player));
+    }
 
 }

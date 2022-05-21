@@ -82,10 +82,10 @@ public class GrapplingHook : NetworkBehaviour
     {
         if (IsOwner)
         {
-            m_Handler.OnHookRender.RemoveListener(UpdateHookServerRpc);
-            m_Handler.OnMoveFixedUpdate.RemoveListener(SwingRopeServerRpc);
-            m_Handler.OnJump.RemoveListener(JumpPerformedServerRpc);
-            m_Handler.OnHook.RemoveListener(LaunchHookServerRpc);
+            m_Handler.OnHookRender.AddListener(UpdateHookServerRpc);
+            m_Handler.OnMoveFixedUpdate.AddListener(SwingRopeServerRpc);
+            m_Handler.OnJump.AddListener(JumpPerformedServerRpc);
+            m_Handler.OnHook.AddListener(LaunchHookServerRpc);
         }
     }
     #endregion

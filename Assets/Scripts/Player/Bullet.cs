@@ -1,5 +1,5 @@
 using System.Collections;
-using System.Collections.Generic;
+using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -7,16 +7,12 @@ public class Bullet : NetworkBehaviour
 {
 
     Rigidbody2D m_RBody;
-    CircleCollider2D m_Collider;
 
 
-
-    //[HideInInspector]public Vector3 m_Direction;
 
     private void Start()
     {
         m_RBody = GetComponent<Rigidbody2D>();
-        m_Collider = GetComponent<CircleCollider2D>();
         m_RBody.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
 
     }
@@ -31,29 +27,15 @@ public class Bullet : NetworkBehaviour
             }
 
             ulong targetClientId = collision.gameObject.GetComponent<NetworkObject>().OwnerClientId;
+
             if (targetClientId == OwnerClientId) return;
-            ClientRpcParams clientRpcParams = new ClientRpcParams
-            {
-                Send = new ClientRpcSendParams
-                {
-                    TargetClientIds = new ulong[] { targetClientId }
-                }
-            };
-            DamagePlayerClientRPC(clientRpcParams);
+
+            Player targetPlayer = collision.gameObject.GetComponent<Player>();
+
+            targetPlayer.ComputeDamage(OwnerClientId);
 
             GetComponent<NetworkObject>().Despawn();
         }
     }
-    [ClientRpc]
-    void DamagePlayerClientRPC(ClientRpcParams clientRpcParams = default)
-    {
-
-        //UIManager gui = FindObjectOfType<UIManager>();
-        //gui.m_HitPoints++;
-        //gui.UpdateLifeUI(gui.m_HitPoints);
-        FindObjectOfType<GameManager>().m_LocalPlayer.ComputeDamage();
-
-    }
-
 
 }

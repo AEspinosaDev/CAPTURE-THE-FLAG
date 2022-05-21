@@ -95,7 +95,7 @@ public class WeaponAim : NetworkBehaviour
 
         SetCrossHairPosition(aimAngle);
 
-        UpdateWeaponOrientationServerRPC(m_CrossHair.localPosition.x, m_CrossHair.position - new Vector3(m_Weapon.position.x, m_Weapon.position.y, 0));
+        UpdateWeaponOrientationServerRPC(m_CrossHair.localPosition.x, m_CrossHair.position - m_Weapon.position);
         //UpdateWeaponOrientation();
 
     }

@@ -223,9 +223,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_State:
     m_InternalValue: 0
-  m_PlayerName: {fileID: 2097285004055753146}
-  m_Life: 6
-  m_Text:
+  m_PlayerNameRenderer: {fileID: 0}
+  m_PlayerName:
     m_InternalValue:
       utf8LengthInBytes: 0
       bytes:
@@ -294,6 +293,12 @@ MonoBehaviour:
         byte0059: 0
         byte0060: 0
         byte0061: 0
+  m_Life:
+    m_InternalValue: 0
+  m_Kills:
+    m_InternalValue: 0
+  m_Deaths:
+    m_InternalValue: 0
 --- !u!114 &169404036177825696
 MonoBehaviour:
   m_ObjectHideFlags: 0
