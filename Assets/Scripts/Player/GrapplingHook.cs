@@ -65,6 +65,7 @@ public class GrapplingHook : NetworkBehaviour
             m_Handler.OnHook.AddListener(LaunchHookServerRpc);
         }
         m_RopeDistance.OnValueChanged += OnRopeDistanceValueChanged;
+
     }
 
     private void OnDisable()
@@ -125,15 +126,18 @@ public class GrapplingHook : NetworkBehaviour
     [ServerRpc]
     void LaunchHookServerRpc(Vector2 input)
     {
-        var hit = Physics2D.Raycast(m_PlayerTransform.position, input - (Vector2)m_PlayerTransform.position, Mathf.Infinity, m_Layer);
-
-        if (hit.collider)
+        if (m_Player.m_State.Value != PlayerState.Grounded)
         {
-            var anchor = hit.centroid;
-            m_Rope.connectedAnchor = anchor;
-            m_RopeRenderer.SetPosition(1, anchor);
-            UpdateAnchorClientRpc(hit.centroid);
-            m_Player.m_State.Value = PlayerState.Hooked;
+            var hit = Physics2D.Raycast(m_PlayerTransform.position, input - (Vector2)m_PlayerTransform.position, Mathf.Infinity, m_Layer);
+
+            if (hit.collider)
+            {
+                var anchor = hit.centroid;
+                m_Rope.connectedAnchor = anchor;
+                m_RopeRenderer.SetPosition(1, anchor);
+                UpdateAnchorClientRpc(hit.centroid);
+                m_Player.m_State.Value = PlayerState.Hooked;
+            }
         }
     }
 

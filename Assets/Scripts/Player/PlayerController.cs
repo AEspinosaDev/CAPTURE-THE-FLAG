@@ -29,15 +29,16 @@ public class PlayerController : NetworkBehaviour
     ContactFilter2D m_Filter;
     InputHandler m_Handler;
     Player m_Player;
-    Rigidbody2D m_Body;
-    new CapsuleCollider2D m_Collider;
+    public Rigidbody2D m_Body;
+    CapsuleCollider2D m_Collider;
     Animator m_Animator;
     SpriteRenderer m_SpriteRenderer;
 
     // https://docs-multiplayer.unity3d.com/netcode/current/basics/networkvariable
     NetworkVariable<bool> m_FlipSprite;
 
-
+    bool IsGrounded => m_Collider.IsTouching(m_Filter) && m_Body.velocity.y==0;
+    //bool IsGrounded;
 
 
     #endregion
@@ -54,6 +55,7 @@ public class PlayerController : NetworkBehaviour
         m_SpriteRenderer = GetComponent<SpriteRenderer>();
 
         m_FlipSprite = new NetworkVariable<bool>();
+        m_JumpsLeft = m_MaxJumps;
 
     }
 
@@ -64,7 +66,8 @@ public class PlayerController : NetworkBehaviour
             m_Handler.OnMove.AddListener(UpdatePlayerVisualsServerRpc);
             m_Handler.OnJump.AddListener(PerformJumpServerRpc);
             m_Handler.OnMoveFixedUpdate.AddListener(UpdatePlayerPositionServerRpc);
-           
+
+
         }
 
         m_FlipSprite.OnValueChanged += OnFlipSpriteValueChanged;
@@ -72,7 +75,12 @@ public class PlayerController : NetworkBehaviour
         //m_NetworkVel.OnValueChanged += UpdateClientVelocity;
     }
 
+    private void Update()
+    {
+        if (IsServer)
+            print(IsGrounded);
 
+    }
     private void OnDisable()
     {
         if (IsOwner)
@@ -80,6 +88,7 @@ public class PlayerController : NetworkBehaviour
             m_Handler.OnMove.RemoveListener(UpdatePlayerVisualsServerRpc);
             m_Handler.OnJump.RemoveListener(PerformJumpServerRpc);
             m_Handler.OnMoveFixedUpdate.RemoveListener(UpdatePlayerPositionServerRpc);
+
         }
         m_FlipSprite.OnValueChanged -= OnFlipSpriteValueChanged;
     }
@@ -107,7 +116,7 @@ public class PlayerController : NetworkBehaviour
         m_Filter.useNormalAngle = true;
         m_Filter.layerMask = m_Layer;
     }
-   
+
     #endregion
 
     #region RPC
@@ -118,16 +127,21 @@ public class PlayerController : NetworkBehaviour
     [ServerRpc]
     void UpdatePlayerVisualsServerRpc(Vector2 input)
     {
-        UpdateAnimatorStateServerRpc();
+        UpdateAnimatorStateServerRpc(input);
         UpdateSpriteOrientation(input);
     }
 
     // https://docs-multiplayer.unity3d.com/netcode/current/advanced-topics/message-system/serverrpc
     [ServerRpc]
-    void UpdateAnimatorStateServerRpc()
+    void UpdateAnimatorStateServerRpc(Vector2 input)
     {
         if (IsGrounded)
         {
+            if (input == Vector2.zero)
+            {
+                m_Animator.SetBool("isWalking", false);
+            }
+            else m_Animator.SetBool("isWalking", true);
             m_Animator.SetBool("isGrounded", true);
             m_Animator.SetBool("isJumping", false);
         }
@@ -150,6 +164,7 @@ public class PlayerController : NetworkBehaviour
             return;
         }
 
+        print(m_JumpsLeft);
         m_Player.m_State.Value = PlayerState.Jumping;
         m_Animator.SetBool("isJumping", true);
         m_Body.velocity = new Vector2(m_Body.velocity.x, m_JumpHeigth);
@@ -162,7 +177,15 @@ public class PlayerController : NetworkBehaviour
     {
         if (IsGrounded)
         {
+            //if (m_JumpsLeft <= 1)
+            //{
+            //    m_JumpsLeft = m_MaxJumps;
+            //}
             m_Player.m_State.Value = PlayerState.Grounded;
+        }
+        else if (m_Player.m_State.Value != PlayerState.Hooked)
+        {
+            m_Player.m_State.Value = PlayerState.Jumping;
         }
 
         if ((m_Player.m_State.Value != PlayerState.Hooked))
@@ -170,7 +193,8 @@ public class PlayerController : NetworkBehaviour
             m_Body.velocity = new Vector2(input.x * m_Speed, m_Body.velocity.y);
         }
     }
-    
+
+
 
     #endregion
     #region ClientRCP
@@ -198,9 +222,8 @@ public class PlayerController : NetworkBehaviour
     {
         m_SpriteRenderer.flipX = current;
     }
-   
 
-    bool IsGrounded => m_Collider.IsTouching(m_Filter);
+
 
     #endregion
 

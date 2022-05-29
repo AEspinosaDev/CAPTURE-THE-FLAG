@@ -8,8 +8,6 @@ public class Bullet : NetworkBehaviour
 
     Rigidbody2D m_RBody;
 
-
-
     private void Start()
     {
         m_RBody = GetComponent<Rigidbody2D>();

@@ -5,6 +5,7 @@ using Cinemachine;
 using Unity.Netcode;
 using UnityEngine.UI;
 using Unity.Collections;
+using System;
 
 public class Player : NetworkBehaviour
 {
@@ -12,18 +13,27 @@ public class Player : NetworkBehaviour
 
 
     // https://docs-multiplayer.unity3d.com/netcode/current/basics/networkvariable
-    [SerializeField] public NetworkVariable<PlayerState> m_State;
 
     [SerializeField] public TextMesh m_PlayerNameRenderer;
 
     private UIManager m_UIManager;
     private GameManager m_GameManager;
-    private const int MAX_HP = 6;
 
+    private const int MAX_HP = 6;
+    private const int POINTS_PER_KILL = 100;
+    private const int POINTS_PER_DEATH = 50;
+    
+
+    #region Network Variables
+    [SerializeField] public NetworkVariable<PlayerState> m_State;
     [HideInInspector] public NetworkVariable<FixedString64Bytes> m_PlayerName;
     [HideInInspector] public NetworkVariable<int> m_Life;
     [HideInInspector] public NetworkVariable<int> m_Kills;
     [HideInInspector] public NetworkVariable<int> m_Deaths;
+    [HideInInspector] public NetworkVariable<int> m_Points;
+    [HideInInspector] public NetworkVariable<int> m_TimeLeft;
+    [HideInInspector] public NetworkVariable<int> m_Foes;
+    #endregion
 
 
     #endregion
@@ -33,7 +43,7 @@ public class Player : NetworkBehaviour
 
     //public override void OnNetworkSpawn()
     //{
-    //    print("pn network spawn!");
+    //    UpdatePlayerNumberAndNamesServerRpc(m_PlayerName.Value.ToString());
     //}
 
 
@@ -45,6 +55,10 @@ public class Player : NetworkBehaviour
         m_Life = new NetworkVariable<int>();
         m_Kills = new NetworkVariable<int>();
         m_Deaths = new NetworkVariable<int>();
+        m_Points = new NetworkVariable<int>();
+
+        m_TimeLeft = new NetworkVariable<int>();
+        m_Foes = new NetworkVariable<int>();
 
     }
     private void Start()
@@ -57,19 +71,27 @@ public class Player : NetworkBehaviour
             m_Life.OnValueChanged += UpdateGUILife;
             m_Kills.OnValueChanged += UpdateGUIKills;
             m_Deaths.OnValueChanged += UpdateGUIDeaths;
+            m_Points.OnValueChanged += UpdateGUIPoints;
+
+            m_TimeLeft.OnValueChanged += UpdateGUITime;
+            m_Foes.OnValueChanged += UpdateGUIPlayers;
 
             ConfigurePlayer();
             ConfigureCamera();
             ConfigureControls();
 
+            UpdatePlayerCountServerRpc();
+
         }
         if (IsServer)
         {
             m_Life.Value = MAX_HP;
+            
         }
 
 
     }
+
 
     private void OnEnable()
     {
@@ -82,6 +104,12 @@ public class Player : NetworkBehaviour
             m_Life.OnValueChanged += UpdateGUILife;
             m_Kills.OnValueChanged += UpdateGUIKills;
             m_Deaths.OnValueChanged += UpdateGUIDeaths;
+
+
+            m_Points.OnValueChanged += UpdateGUIPoints;
+
+            m_TimeLeft.OnValueChanged += UpdateGUITime;
+            m_Foes.OnValueChanged += UpdateGUIPlayers;
         }
 
     }
@@ -97,6 +125,11 @@ public class Player : NetworkBehaviour
             m_Life.OnValueChanged -= UpdateGUILife;
             m_Kills.OnValueChanged -= UpdateGUIKills;
             m_Deaths.OnValueChanged -= UpdateGUIDeaths;
+
+            m_Points.OnValueChanged -= UpdateGUIPoints;
+
+            m_TimeLeft.OnValueChanged -= UpdateGUITime;
+            m_Foes.OnValueChanged -= UpdateGUIPlayers;
         }
 
     }
@@ -111,11 +144,7 @@ public class Player : NetworkBehaviour
 
     void ConfigurePlayer()
     {
-
-        //?????????????????????????
         UpdatePlayerStateServerRpc(PlayerState.Grounded);
-
-
         UpdatePlayerNameServerRpc(m_UIManager.m_InputFieldName.text, NetworkObjectId);
         m_GameManager.m_LocalPlayer = this;
     }
@@ -152,8 +181,9 @@ public class Player : NetworkBehaviour
         Player killer;
         m_GameManager.m_Players.TryGetValue(enemyClientId, out killer);
         killer.m_Kills.Value++;
+        killer.m_Points.Value += POINTS_PER_KILL;
         KillPlayerClientRpc(killer.m_PlayerName.Value.ToString());
-        m_GameManager.RespawnPlayer(5f, gameObject);
+        m_GameManager.RespawnPlayer(gameObject);
         gameObject.SetActive(false);
 
     }
@@ -164,6 +194,7 @@ public class Player : NetworkBehaviour
     {
         RespawnPlayerClientRpc();
         m_Deaths.Value++;
+        if (m_Points.Value - POINTS_PER_DEATH < 0) m_Points.Value = 0; else m_Points.Value -= POINTS_PER_DEATH;
         m_Life.Value = MAX_HP;
     }
     #endregion
@@ -186,7 +217,18 @@ public class Player : NetworkBehaviour
         m_PlayerName.Value = name;
 
     }
-    
+    [ServerRpc]
+    public void UpdatePlayerCountServerRpc()
+    {
+        m_GameManager.UpdatePlayersCount();
+    }
+
+    [ServerRpc]
+    public void DisconnectPlayerServerRpc(ulong id)
+    {
+        m_GameManager.DisconnectPlayer(id);
+    }
+
     [ClientRpc]
     public void KillPlayerClientRpc(string killerName)
     {
@@ -203,6 +245,17 @@ public class Player : NetworkBehaviour
     {
         gameObject.SetActive(true);
 
+    }
+    [ClientRpc]
+    public void InitializeEndGameActionsClientRpc()
+    {
+        if (IsLocalPlayer)
+        {
+            GetComponent<InputHandler>().enabled = false;
+            GetComponent<PlayerController>().m_Body.velocity = new Vector2(0,GetComponent<PlayerController>().m_Body.velocity.y); 
+            m_UIManager.ActivateEndGameCanvas();
+
+        }
     }
 
     #endregion
@@ -230,6 +283,22 @@ public class Player : NetworkBehaviour
     private void UpdateGUIDeaths(int previousValue, int newValue)
     {
         m_UIManager.UpdatePlayerDeaths(newValue);
+    }
+    private void UpdateGUITime(int PreviousTotalTimeLeft, int NewTimeLeft)
+    {
+        int min = NewTimeLeft / 60;
+        int seconds = NewTimeLeft % 60;
+        string secondsText;
+        if (seconds >= 10) secondsText = seconds.ToString(); else secondsText = "0" + seconds.ToString();
+        m_UIManager.m_TimeLeft.text = min.ToString() + ":" + secondsText;
+    }
+    private void UpdateGUIPlayers(int previousValue, int newValue)
+    {
+        m_UIManager.UpdatePlayerNumber(newValue);
+    }
+    private void UpdateGUIPoints(int previousValue, int newValue)
+    {
+        m_UIManager.UpdatePlayerPoints(newValue);
     }
 
     #endregion

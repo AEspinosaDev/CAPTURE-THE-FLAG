@@ -24,6 +24,7 @@ public class InputHandler : NetworkBehaviour
     public UnityEvent OnJump;
     public UnityEvent <Vector2,ulong>OnFire;
 
+
     Vector2 CachedMoveInput { get; set; }
 
     #endregion
@@ -83,13 +84,16 @@ public class InputHandler : NetworkBehaviour
             if (_fire.WasPerformedThisFrame()) { Fire(screenPoint,OwnerClientId); }
 
             HookRender(CachedMoveInput);
+
         }
     }
 
     private void FixedUpdate()
     {
+
         MoveFixedUpdate(CachedMoveInput);
     }
+
 
     #endregion
 
@@ -104,6 +108,7 @@ public class InputHandler : NetworkBehaviour
     {
         OnMoveFixedUpdate?.Invoke(input);
     }
+
 
     void Jump()
     {
