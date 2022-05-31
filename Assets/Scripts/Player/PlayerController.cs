@@ -75,12 +75,12 @@ public class PlayerController : NetworkBehaviour
         //m_NetworkVel.OnValueChanged += UpdateClientVelocity;
     }
 
-    private void Update()
-    {
-        if (IsServer)
-            print(IsGrounded);
+    //private void Update()
+    //{
+    //    if (IsServer)
+    //        print(IsGrounded);
 
-    }
+    //}
     private void OnDisable()
     {
         if (IsOwner)
@@ -164,7 +164,6 @@ public class PlayerController : NetworkBehaviour
             return;
         }
 
-        print(m_JumpsLeft);
         m_Player.m_State.Value = PlayerState.Jumping;
         m_Animator.SetBool("isJumping", true);
         m_Body.velocity = new Vector2(m_Body.velocity.x, m_JumpHeigth);
@@ -183,10 +182,10 @@ public class PlayerController : NetworkBehaviour
             //}
             m_Player.m_State.Value = PlayerState.Grounded;
         }
-        else if (m_Player.m_State.Value != PlayerState.Hooked)
-        {
-            m_Player.m_State.Value = PlayerState.Jumping;
-        }
+        //else if (m_Player.m_State.Value != PlayerState.Hooked)
+        //{
+        //    m_Player.m_State.Value = PlayerState.Jumping;
+        //}
 
         if ((m_Player.m_State.Value != PlayerState.Hooked))
         {

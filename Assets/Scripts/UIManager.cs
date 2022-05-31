@@ -36,6 +36,14 @@ public class UIManager : MonoBehaviour
 
     [SerializeField] public Text m_PlayerNickName;
 
+    [Header("Lobby Canvas")]
+    [SerializeField] private GameObject m_LobbyCanvas;
+    [SerializeField] public Text m_NumPlayersLobby;
+    [SerializeField] public Text m_CountdownText;
+    [SerializeField] public Text m_PlayersReady;
+    [SerializeField] private Button m_ButtonReady;
+
+
     [Header("In-Game HUD")]
 
     [SerializeField] private GameObject m_InGameHUD;
@@ -50,6 +58,9 @@ public class UIManager : MonoBehaviour
     [SerializeField] public Text m_KillCanvas;
     [SerializeField] public Text m_KillNotification;
     [SerializeField] public Text m_TimeLeft;
+
+    [SerializeField] public Text m_FightText;
+
 
     [SerializeField] private Button m_ButtonQuitGame;
 
@@ -85,6 +96,12 @@ public class UIManager : MonoBehaviour
         m_ButtonQuit.onClick.AddListener(() => Application.Quit());
         m_ButtonBack.onClick.AddListener(QuitAndReturnToMainMenu);
 
+        m_ButtonReady.onClick.AddListener(()=>
+        {
+            m_GameManager.m_LocalPlayer.SetPlayerReadyServerRpc(1);
+            m_ButtonReady.gameObject.SetActive(false);
+        });
+
     }
 
     #endregion
@@ -94,7 +111,11 @@ public class UIManager : MonoBehaviour
     public void UpdatePlayerNumber(int num)
     {
         m_NumPlayers.text = num.ToString() + "/6 PLAYERS";
-
+        m_NumPlayersLobby.text = num.ToString() + "/6 PLAYERS";
+    }
+    public void UpdatePlayersReadyNumber(int num)
+    {
+        m_PlayersReady.text = num.ToString() + " PLAYERS READY";
     }
     public void UpdatePlayerKills(int num)
     {
@@ -108,8 +129,23 @@ public class UIManager : MonoBehaviour
     }
     public void UpdatePlayerPoints(int num)
     {
-        m_Deaths.text = num.ToString() + " POINTS";
-
+        m_Points.text = num.ToString() + " POINTS";
+    }
+    public void UpdateTimeLeft(int currentTime)
+    {
+        int min = currentTime / 60;
+        int seconds = currentTime % 60;
+        string secondsText;
+        if (seconds >= 10) secondsText = seconds.ToString(); else secondsText = "0" + seconds.ToString();
+        m_TimeLeft.text = min.ToString() + ":" + secondsText;
+    }
+    public void UpdateCountDownTime(int currentTime)
+    {
+        if (currentTime == m_GameManager.START_MATCH_TIME)
+            m_CountdownText.enabled = true;
+        else if(currentTime==-1)
+            m_CountdownText.enabled = false;
+        m_CountdownText.text = "STARTING IN " + currentTime;
     }
     public void ActivateDeathCanvas()
     {
@@ -123,13 +159,15 @@ public class UIManager : MonoBehaviour
     public void ActivateKillCanvas()
     {
         m_KillCanvas.enabled = true;
-        StartCoroutine(DeactivateKillCanvas(1.8f));
+        //StartCoroutine(DeactivateKillCanvas(1.8f));
+        StartCoroutine(DeactivateText(1.8f, m_KillCanvas));
     }
     public void ActivateAndUpdateKillNotification(string news)
     {
         m_KillNotification.enabled = true;
         m_KillNotification.text = news;
-        StartCoroutine(DeactivateKillNotification(5f));
+        //StartCoroutine(DeactivateKillNotification(5f));
+        StartCoroutine(DeactivateText(5f, m_KillNotification));
 
     }
     private void ActivateMainMenu()
@@ -150,6 +188,29 @@ public class UIManager : MonoBehaviour
 
         }
     }
+    public void ActivateLobbyCanvas()
+    {
+        m_MainMenuCanvas.SetActive(false);
+        m_MainMenu.SetActive(false);
+        m_LobbyCanvas.SetActive(true);
+    }
+
+    public void ActivateInGameHUD()
+    {
+        m_LobbyCanvas.SetActive(false);
+        m_CountdownText.enabled = false;
+        m_ButtonReady.gameObject.SetActive(true);
+        m_InGameHUD.SetActive(true);
+        StartCoroutine(DeactivateText(1.8f, m_FightText));
+
+        UpdateLifeUI(6);
+    }
+    public void ActivateEndGameCanvas()
+    {
+        SetupRanking();
+        m_InGameHUD.SetActive(false);
+        m_EndGameCanvas.SetActive(true);
+    }
     private IEnumerator ChangeTextColor(float waitTime)
     {
         yield return new WaitForSeconds(waitTime);
@@ -165,34 +226,14 @@ public class UIManager : MonoBehaviour
         m_DeathCanvas.SetActive(false);
 
     }
-    private IEnumerator DeactivateKillCanvas(float waitTime)
+    private IEnumerator DeactivateText(float waitTime, Text canvas)
     {
         yield return new WaitForSeconds(waitTime);
-        m_KillCanvas.enabled = false;
-    }
-    private IEnumerator DeactivateKillNotification(float waitTime)
-    {
-        yield return new WaitForSeconds(waitTime);
-        m_KillNotification.enabled = false;
+        canvas.enabled = false;
     }
 
-    private void ActivateInGameHUD()
-    {
-        m_MainMenuCanvas.SetActive(false);
-        m_MainMenu.SetActive(false);
-        m_InGameHUD.SetActive(true);
 
-        // for test purposes
-        //?????????????????????????????????????????
-        m_GameManager.m_PlayState = true;
-        UpdateLifeUI(6);
-    }
-    public void ActivateEndGameCanvas()
-    {
-        SetupRanking();
-        m_InGameHUD.SetActive(false);
-        m_EndGameCanvas.SetActive(true);
-    }
+
     private void SetupRanking()
     {
         List<Player> players = new List<Player>();
@@ -202,16 +243,16 @@ public class UIManager : MonoBehaviour
             players.Add(p);
         }
         players.Sort(delegate (Player p1, Player p2)
-        { 
-                if (p1.m_Points.Value > p2.m_Points.Value) return 1;
-                if (p1.m_Points.Value== p2.m_Points.Value) return 0;
-                else return -1;
-            
+        {
+            if (p1.m_Points.Value < p2.m_Points.Value) return 1;
+            if (p1.m_Points.Value == p2.m_Points.Value) return 0;
+            else return -1;
+
         });
         int i = 0;
         while (i < players.Count)
         {
-            m_PlayerResults[i].text = players[i].m_PlayerName.Value.ToString() + ": " + players[i].m_Kills.Value + " KILLS " + players[i].m_Deaths.Value + " DEATHS ";
+            m_PlayerResults[i].text = players[i].m_PlayerName.Value.ToString() + ": " + players[i].m_Kills.Value + " K/" + players[i].m_Deaths.Value + " D " + players[i].m_Points.Value + " PTS";
             i++;
         }
         while (i < m_GameManager.TOTAL_PLAYERS)
@@ -294,7 +335,8 @@ public class UIManager : MonoBehaviour
     private void StartHost()
     {
         NetworkManager.Singleton.StartHost();
-        ActivateInGameHUD();
+        ActivateLobbyCanvas();
+        //ActivateInGameHUD();
     }
 
     private void StartClient()
@@ -305,13 +347,15 @@ public class UIManager : MonoBehaviour
             m_Transport.SetConnectionData(ip, m_Port);
         }
         NetworkManager.Singleton.StartClient();
-        ActivateInGameHUD();
+        //ActivateInGameHUD();
+        ActivateLobbyCanvas();
     }
 
     private void StartServer()
     {
         NetworkManager.Singleton.StartServer();
-        ActivateInGameHUD();
+        ActivateLobbyCanvas();
+        //ActivateInGameHUD();
     }
 
     #endregion

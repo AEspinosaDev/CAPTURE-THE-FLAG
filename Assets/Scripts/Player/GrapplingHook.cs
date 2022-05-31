@@ -6,13 +6,10 @@ public class GrapplingHook : NetworkBehaviour
     #region Variables
 
     InputHandler m_Handler;
-    // https://docs.unity3d.com/2020.3/Documentation/ScriptReference/DistanceJoint2D.html
     DistanceJoint2D m_Rope;
-    // // https://docs.unity3d.com/2020.3/Documentation/ScriptReference/LineRenderer.html
     LineRenderer m_RopeRenderer;
     Transform m_PlayerTransform;
     [SerializeField] Material m_Mat;
-    // https://docs.unity3d.com/2020.3/Documentation/ScriptReference/LayerMask.html
     LayerMask m_Layer;
     Player m_Player;
 
@@ -21,7 +18,6 @@ public class GrapplingHook : NetworkBehaviour
 
     Rigidbody2D m_RBody;
 
-    // https://docs-multiplayer.unity3d.com/netcode/current/basics/networkvariable
     NetworkVariable<float> m_RopeDistance;
 
     #endregion
@@ -95,7 +91,6 @@ public class GrapplingHook : NetworkBehaviour
 
     #region ServerRPC
 
-    // https://docs-multiplayer.unity3d.com/netcode/current/advanced-topics/message-system/serverrpc
     [ServerRpc]
     void UpdateHookServerRpc(Vector2 input)
     {
@@ -113,7 +108,6 @@ public class GrapplingHook : NetworkBehaviour
         }
     }
 
-    // https://docs-multiplayer.unity3d.com/netcode/current/advanced-topics/message-system/serverrpc
     [ServerRpc]
     void JumpPerformedServerRpc()
     {
@@ -122,7 +116,6 @@ public class GrapplingHook : NetworkBehaviour
         m_RopeRenderer.enabled = false;
     }
 
-    // https://docs-multiplayer.unity3d.com/netcode/current/advanced-topics/message-system/serverrpc
     [ServerRpc]
     void LaunchHookServerRpc(Vector2 input)
     {
@@ -141,7 +134,6 @@ public class GrapplingHook : NetworkBehaviour
         }
     }
 
-    // https://docs-multiplayer.unity3d.com/netcode/current/advanced-topics/message-system/serverrpc
     [ServerRpc]
     void SwingRopeServerRpc(Vector2 input)
     {
@@ -165,7 +157,6 @@ public class GrapplingHook : NetworkBehaviour
 
     #region ClientRPC
 
-    // https://docs-multiplayer.unity3d.com/netcode/current/advanced-topics/message-system/clientrpc
     [ClientRpc]
     void UpdateAnchorClientRpc(Vector2 anchor)
     {
@@ -174,14 +165,12 @@ public class GrapplingHook : NetworkBehaviour
         m_RopeRenderer.SetPosition(1, anchor);
     }
 
-    // https://docs-multiplayer.unity3d.com/netcode/current/advanced-topics/message-system/clientrpc
     [ClientRpc]
     void UpdateRopeClientRpc()
     {
         m_RopeRenderer.SetPosition(0, m_PlayerTransform.position);
     }
 
-    // https://docs-multiplayer.unity3d.com/netcode/current/advanced-topics/message-system/clientrpc
     [ClientRpc]
     void ShowRopeClientRpc()
     {
@@ -189,7 +178,6 @@ public class GrapplingHook : NetworkBehaviour
         m_RopeRenderer.enabled = true;
     }
 
-    // https://docs-multiplayer.unity3d.com/netcode/current/advanced-topics/message-system/clientrpc
     [ClientRpc]
     void RemoveRopeClientRpc()
     {
