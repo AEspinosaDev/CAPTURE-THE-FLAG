@@ -6,6 +6,9 @@ using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
 using Cinemachine;
 
+/// <summary>
+/// Class containing all the logic behind the UI and graphical aspects of the game.
+/// </summary>
 public class UIManager : MonoBehaviour
 {
 
@@ -42,6 +45,11 @@ public class UIManager : MonoBehaviour
     [SerializeField] public Text m_CountdownText;
     [SerializeField] public Text m_PlayersReady;
     [SerializeField] private Button m_ButtonReady;
+    [SerializeField] private Button m_ButtonCustomize;
+
+    //Es un unity assets muy util y chulo para elegir el color
+    [SerializeField] private FlexibleColorPicker m_ColorPicker;
+    private bool m_IsCustomizing = false;
 
 
     [Header("In-Game HUD")]
@@ -89,6 +97,7 @@ public class UIManager : MonoBehaviour
 
     private void Start()
     {
+
         m_ButtonSubmit.onClick.AddListener(ActivateMainMenu);
         m_ButtonHost.onClick.AddListener(() => StartHost());
         m_ButtonClient.onClick.AddListener(() => StartClient());
@@ -96,22 +105,40 @@ public class UIManager : MonoBehaviour
         m_ButtonQuit.onClick.AddListener(() => Application.Quit());
         m_ButtonBack.onClick.AddListener(QuitAndReturnToMainMenu);
 
-        m_ButtonReady.onClick.AddListener(()=>
+        m_ButtonReady.onClick.AddListener(() =>
         {
             m_GameManager.m_LocalPlayer.SetPlayerReadyServerRpc(1);
             m_ButtonReady.gameObject.SetActive(false);
         });
 
+        m_ButtonCustomize.onClick.AddListener(() =>
+        {
+            if (!m_IsCustomizing)
+            {
+                m_IsCustomizing = true;
+                m_ButtonCustomize.GetComponentInChildren<Text>().text = "ACCEPT";
+                m_ColorPicker.gameObject.SetActive(true);
+            }
+            else
+            {
+                m_IsCustomizing = false;
+                m_ButtonCustomize.GetComponentInChildren<Text>().text = "CUSTOMIZE";
+                //Cambia el color al jugador con server RPC
+                m_GameManager.m_LocalPlayer.ChangePlayerColorServerRpc(m_ColorPicker.color);
+                m_ColorPicker.gameObject.SetActive(false);
+
+            }
+        });
     }
 
     #endregion
 
     #region UI Related Methods
-
+    //Update text methods
     public void UpdatePlayerNumber(int num)
     {
-        m_NumPlayers.text = num.ToString() + "/6 PLAYERS";
-        m_NumPlayersLobby.text = num.ToString() + "/6 PLAYERS";
+        m_NumPlayers.text = num.ToString() + "/" + m_GameManager.TOTAL_PLAYERS + " PLAYERS";
+        m_NumPlayersLobby.text = num.ToString() + "/" + m_GameManager.TOTAL_PLAYERS + " PLAYERS";
     }
     public void UpdatePlayersReadyNumber(int num)
     {
@@ -133,6 +160,8 @@ public class UIManager : MonoBehaviour
     }
     public void UpdateTimeLeft(int currentTime)
     {
+        //Se transforma el tiempo a segundos y minutos
+        //para hacerlo más agradable y entendible
         int min = currentTime / 60;
         int seconds = currentTime % 60;
         string secondsText;
@@ -143,10 +172,11 @@ public class UIManager : MonoBehaviour
     {
         if (currentTime == m_GameManager.START_MATCH_TIME)
             m_CountdownText.enabled = true;
-        else if(currentTime==-1)
+        else if (currentTime == -1)
             m_CountdownText.enabled = false;
         m_CountdownText.text = "STARTING IN " + currentTime;
     }
+    //Menu activation functions
     public void ActivateDeathCanvas()
     {
         m_DeathCanvas.SetActive(true);
@@ -154,7 +184,7 @@ public class UIManager : MonoBehaviour
         {
             h.enabled = false;
         }
-        StartCoroutine(DeactivateDeathCanvas(4.8f));
+        StartCoroutine(DeactivateDeathCanvas(2.5f));
     }
     public void ActivateKillCanvas()
     {
@@ -170,10 +200,10 @@ public class UIManager : MonoBehaviour
         StartCoroutine(DeactivateText(5f, m_KillNotification));
 
     }
-    private void ActivateMainMenu()
+    public void ActivateMainMenu()
     {
 
-        if (m_InputFieldName.text != "")
+        if (m_InputFieldName.text != "")//Si se ha introducido el nombre te deja pasar
         {
             m_LoginMenu.SetActive(false);
             m_MainMenu.SetActive(true);
@@ -181,7 +211,7 @@ public class UIManager : MonoBehaviour
             m_PlayerNickName.text = "Welcome " + m_InputFieldName.text;
             m_InputFieldIP.placeholder.GetComponent<Text>().text = m_Transport.ConnectionData.Address;
         }
-        else
+        else //Si no, te avisa de que debes introducir un nombre
         {
             m_InputFieldName.placeholder.GetComponent<Text>().color = Color.red;
             StartCoroutine(ChangeTextColor(1.5f));
@@ -207,15 +237,26 @@ public class UIManager : MonoBehaviour
     }
     public void ActivateEndGameCanvas()
     {
+        //Antes de activarlo prepara el ranking de jugadores
         SetupRanking();
         m_InGameHUD.SetActive(false);
         m_EndGameCanvas.SetActive(true);
     }
+    /// <summary>
+    /// Corountine method for changing the input name text color when on error.
+    /// </summary>
+    /// <param name="waitTime"></param>
+    /// <returns></returns>
     private IEnumerator ChangeTextColor(float waitTime)
     {
         yield return new WaitForSeconds(waitTime);
         m_InputFieldName.placeholder.GetComponent<Text>().color = Color.black;
     }
+    /// <summary>
+    /// Coroutine method that deactivates the death canvas that appears when the player dies after a time
+    /// </summary>
+    /// <param name="waitTime"></param>
+    /// <returns></returns>
     private IEnumerator DeactivateDeathCanvas(float waitTime)
     {
         yield return new WaitForSeconds(waitTime);
@@ -226,21 +267,29 @@ public class UIManager : MonoBehaviour
         m_DeathCanvas.SetActive(false);
 
     }
+    /// <summary>
+    /// Generic conroutine method for disabling texts after a specific time has passed.
+    /// </summary>
+    /// <param name="waitTime"></param>
+    /// <param name="canvas"></param>
+    /// <returns></returns>
     private IEnumerator DeactivateText(float waitTime, Text canvas)
     {
         yield return new WaitForSeconds(waitTime);
         canvas.enabled = false;
     }
 
-
-
+    /// <summary>
+    /// Setups the ranking in the end game canvas.
+    /// </summary>
     private void SetupRanking()
     {
         List<Player> players = new List<Player>();
-        Player[] playersArr = FindObjectsOfType<Player>();
-        foreach (var p in playersArr)
+        Player[] playerArr = FindObjectsOfType<Player>();
+        foreach (var p in playerArr)
         {
-            players.Add(p);
+            if (p)
+                players.Add(p);
         }
         players.Sort(delegate (Player p1, Player p2)
         {
@@ -252,35 +301,41 @@ public class UIManager : MonoBehaviour
         int i = 0;
         while (i < players.Count)
         {
+            m_PlayerResults[i].enabled = true;
             m_PlayerResults[i].text = players[i].m_PlayerName.Value.ToString() + ": " + players[i].m_Kills.Value + " K/" + players[i].m_Deaths.Value + " D " + players[i].m_Points.Value + " PTS";
             i++;
         }
-        while (i < m_GameManager.TOTAL_PLAYERS)
-        {
-            m_PlayerResults[i].enabled = false;
-            i++;
-        }
+
 
 
     }
+    /// <summary>
+    /// Returns the player to the main menu after the match has ended and disconnects him from the network
+    /// </summary>
     private void QuitAndReturnToMainMenu()
     {
-        m_GameManager.m_LocalPlayer.DisconnectPlayerServerRpc(m_GameManager.m_LocalPlayer.GetComponent<NetworkObject>().OwnerClientId);
 
         if (m_NetworkManager.IsHost || m_NetworkManager.IsServer)
-            m_NetworkManager.Shutdown();
+          m_NetworkManager.Shutdown();
 
-        m_GameManager.ResetGame();
+        RestartMainMenu();
+
 
         var virtualCam = Camera.main.GetComponent<CinemachineBrain>().ActiveVirtualCamera;
         virtualCam.LookAt = m_CameraStartingPosition;
         virtualCam.Follow = m_CameraStartingPosition;
 
+        m_GameManager.m_LocalPlayer.DisconnectPlayerServerRpc(m_GameManager.m_LocalPlayer.GetComponent<NetworkObject>().OwnerClientId);
+
+    }
+    public void RestartMainMenu()
+    {
+        m_LobbyCanvas.SetActive(false);
         m_EndGameCanvas.SetActive(false);
         m_MainMenuCanvas.SetActive(true);
         m_MainMenu.SetActive(true);
-
     }
+
 
     public void UpdateLifeUI(int hitpoints)
     {
@@ -334,9 +389,9 @@ public class UIManager : MonoBehaviour
 
     private void StartHost()
     {
+        //NetworkManager.Singleton.ConnectionApprovalCallback += m_GameManager.ApprovalCheck;
         NetworkManager.Singleton.StartHost();
         ActivateLobbyCanvas();
-        //ActivateInGameHUD();
     }
 
     private void StartClient()
@@ -347,15 +402,14 @@ public class UIManager : MonoBehaviour
             m_Transport.SetConnectionData(ip, m_Port);
         }
         NetworkManager.Singleton.StartClient();
-        //ActivateInGameHUD();
         ActivateLobbyCanvas();
     }
 
     private void StartServer()
     {
+        //NetworkManager.Singleton.ConnectionApprovalCallback += m_GameManager.ApprovalCheck;
         NetworkManager.Singleton.StartServer();
         ActivateLobbyCanvas();
-        //ActivateInGameHUD();
     }
 
     #endregion

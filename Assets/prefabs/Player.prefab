@@ -307,6 +307,8 @@ MonoBehaviour:
     m_InternalValue: 0
   m_Foes:
     m_InternalValue: 0
+  m_ReadyFoes:
+    m_InternalValue: 0
 --- !u!114 &169404036177825696
 MonoBehaviour:
   m_ObjectHideFlags: 0

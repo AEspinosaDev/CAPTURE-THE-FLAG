@@ -72,15 +72,8 @@ public class PlayerController : NetworkBehaviour
 
         m_FlipSprite.OnValueChanged += OnFlipSpriteValueChanged;
 
-        //m_NetworkVel.OnValueChanged += UpdateClientVelocity;
     }
 
-    //private void Update()
-    //{
-    //    if (IsServer)
-    //        print(IsGrounded);
-
-    //}
     private void OnDisable()
     {
         if (IsOwner)
@@ -176,16 +169,8 @@ public class PlayerController : NetworkBehaviour
     {
         if (IsGrounded)
         {
-            //if (m_JumpsLeft <= 1)
-            //{
-            //    m_JumpsLeft = m_MaxJumps;
-            //}
             m_Player.m_State.Value = PlayerState.Grounded;
         }
-        //else if (m_Player.m_State.Value != PlayerState.Hooked)
-        //{
-        //    m_Player.m_State.Value = PlayerState.Jumping;
-        //}
 
         if ((m_Player.m_State.Value != PlayerState.Hooked))
         {

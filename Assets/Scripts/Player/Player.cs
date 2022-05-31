@@ -7,6 +7,10 @@ using UnityEngine.UI;
 using Unity.Collections;
 using System;
 
+/// <summary>
+/// Class where the main logic of the player is computed, also acting as a virtual representation of the client
+/// and a bridge between the server and the client.
+/// </summary>
 public class Player : NetworkBehaviour
 {
     #region Variables
@@ -31,6 +35,7 @@ public class Player : NetworkBehaviour
     [HideInInspector] public NetworkVariable<int> m_TimeLeft;
     [HideInInspector] public NetworkVariable<int> m_Foes;
     [HideInInspector] public NetworkVariable<int> m_ReadyFoes;
+    [HideInInspector] public NetworkVariable<Color> m_Color;
     #endregion
 
 
@@ -52,6 +57,7 @@ public class Player : NetworkBehaviour
         m_TimeLeft = new NetworkVariable<int>();
         m_Foes = new NetworkVariable<int>();
         m_ReadyFoes = new NetworkVariable<int>();
+        m_Color = new NetworkVariable<Color>();
 
     }
     private void Start()
@@ -81,16 +87,22 @@ public class Player : NetworkBehaviour
         if (IsServer)
         {
             m_Life.Value = MAX_HP;
+            m_Color.Value = new Color(1, 1, 1, 1);
 
         }
 
+        GetComponent<SpriteRenderer>().color = m_Color.Value;
+        m_Color.OnValueChanged += ChangePlayerColor;
 
     }
+
+
 
     private void OnEnable()
     {
 
         m_PlayerName.OnValueChanged += OnPlayerNameChanged;
+        m_Color.OnValueChanged += ChangePlayerColor;
 
         if (IsLocalPlayer)
         {
@@ -112,6 +124,7 @@ public class Player : NetworkBehaviour
     private void OnDisable()
     {
         m_PlayerName.OnValueChanged -= OnPlayerNameChanged;
+        m_Color.OnValueChanged -= ChangePlayerColor;
 
         if (IsLocalPlayer)
         {
@@ -135,14 +148,19 @@ public class Player : NetworkBehaviour
     #endregion
 
     #region Config Methods
-
+    /// <summary>
+    /// Main configuration of the local player. It stores in the local game manager a reference to self and tells the server to update its
+    /// name across the network
+    /// </summary>
     void ConfigurePlayer()
     {
         UpdatePlayerStateServerRpc(PlayerState.Grounded);
         UpdatePlayerNameServerRpc(m_UIManager.m_InputFieldName.text, NetworkObjectId);
         m_GameManager.m_LocalPlayer = this;
     }
-
+    /// <summary>
+    /// Main configuration of the camera.
+    /// </summary>
     void ConfigureCamera()
     {
         var virtualCam = Camera.main.GetComponent<CinemachineBrain>().ActiveVirtualCamera;
@@ -150,11 +168,17 @@ public class Player : NetworkBehaviour
         virtualCam.LookAt = transform;
         virtualCam.Follow = transform;
     }
-
+    /// <summary>
+    /// Main configuration of the player controls
+    /// </summary>
     void ConfigureControls()
     {
         GetComponent<InputHandler>().enabled = true;
     }
+    /// <summary>
+    /// Server side. Sets the state of the leader crown and propagates it across the network
+    /// </summary>
+    /// <param name="condition"></param>
     public void SetCrownActive(bool condition)
     {
         m_Crown.enabled = condition;
@@ -163,38 +187,50 @@ public class Player : NetworkBehaviour
 
 
     /// <summary>
-    /// Server only. Called when a bullet hits a player on server.
+    /// Server side. Called when a bullet hits the player on the server.
     /// </summary>
+    /// <param name="enemyClientId">The id of the attacker. It will be usefull in case of killing the player</param>
     public void ComputeDamage(ulong enemyClientId)
     {
         m_Life.Value--;
         if (m_Life.Value == 0)
         {
+            //Si la vida llega a 0 se mata al jugador
             KillPlayer(enemyClientId);
         }
     }
     /// <summary>
-    /// Server only.
+    /// Server side. Updates the number of kills and points for the killer, and of course, kills the player by disabling it.
     /// </summary>
-    /// <param name="killerName"></param>
+    /// <param name="killerName">The id of the attacker</param>
     public void KillPlayer(ulong enemyClientId)
     {
         Player killer;
+        //Busca al asesino en la lista de jugadores del manager y le suma un tanto
         m_GameManager.m_Players.TryGetValue(enemyClientId, out killer);
         killer.m_Kills.Value++;
         killer.m_Points.Value += POINTS_PER_KILL;
+        //Propaga la muerte a traves de la red
         KillPlayerClientRpc(killer.m_PlayerName.Value.ToString());
+        //Le pide al manager que compute el ranking para actualizar al poseedor de la corona
         m_GameManager.RankPlayers();
+        //Le pide al manager que inicie la corutina de respawneo del jugador
         m_GameManager.RespawnPlayer(gameObject);
+        //Desactiva completamente a este jugador
         gameObject.SetActive(false);
 
     }
     /// <summary>
-    /// Server only.
+    /// Server side. When the respawning time is over, this function will be called upon, telling the clients to respawn the player
+    /// and updating the death count
     /// </summary>
     public void RespawnPlayer()
     {
+        //Propaga el respawn a traves de la red
         RespawnPlayerClientRpc();
+        //Desactiva el hook en caso de que hubiese muerto colgando
+        GetComponent<GrapplingHook>().DisableHook();
+        //Actualiza las muertes, los puntos y resetea la vida.
         m_Deaths.Value++;
         if (m_Points.Value - POINTS_PER_DEATH < 0) m_Points.Value = 0; else m_Points.Value -= POINTS_PER_DEATH;
         m_Life.Value = MAX_HP;
@@ -202,6 +238,10 @@ public class Player : NetworkBehaviour
     #endregion
 
     #region RPC
+    /// <summary>
+    /// Tells the server to update the player state network variable
+    /// </summary>
+    /// <param name="state"></param>
 
     [ServerRpc]
     public void UpdatePlayerStateServerRpc(PlayerState state)
@@ -219,83 +259,141 @@ public class Player : NetworkBehaviour
         m_PlayerName.Value = name;
 
     }
+    /// <summary>
+    /// Tells the server to update the number of players in the game
+    /// </summary>
     [ServerRpc]
     public void UpdatePlayerCountServerRpc()
     {
         m_GameManager.UpdatePlayersCount();
     }
-
+    /// <summary>
+    /// Tells the server to disconnect the player
+    /// </summary>
+    /// <param name="id"></param>
     [ServerRpc]
     public void DisconnectPlayerServerRpc(ulong id)
     {
         m_GameManager.DisconnectPlayer(id);
     }
+    /// <summary>
+    /// Tells the server to update the number of players ready
+    /// </summary>
+    /// <param name="n"></param>
     [ServerRpc]
     public void SetPlayerReadyServerRpc(int n)
     {
         m_GameManager.UpdatePlayersReadyNumber(n);
     }
-   
+    /// <summary>
+    /// Tells the server to update the color of the platyer sprite given a color chosen by the client
+    /// </summary>
+    /// <param name="color">Color chosen by the client</param>
+    [ServerRpc]
 
+    public void ChangePlayerColorServerRpc(Color color)
+    {
+        m_Color.Value = color;
+        GetComponent<SpriteRenderer>().color = color;
+    }
+    /// <summary>
+    /// Updates the time left only if local player
+    /// </summary>
+    /// <param name="time"></param>
     [ClientRpc]
     public void UpdateCountDownGUIClientRpc(int time)
     {
         if (IsLocalPlayer)
         {
+            //Solo si es local, ya que la GUI pertenece al local
             m_UIManager.UpdateCountDownTime(time);
 
         }
     }
-
+    /// <summary>
+    /// Tell the clients to activate weapons and chooting systems and to activate the ingame GUI
+    /// </summary>
     [ClientRpc]
     public void EnableWeaponsAndGUIClientRpc()
     {
         GetComponent<WeaponAim>().EnableWeapons();
         if (IsLocalPlayer)
         {
+            //Solo si es local, ya que la GUI pertenece al local
             m_UIManager.ActivateInGameHUD();
             m_GameManager.m_LobbySetup.SetActive(false);
         }
     }
+    /// <summary>
+    /// Tells the clients to store in their managers the players
+    /// </summary>
+    [ClientRpc]
+    public void StorePlayersClientRpc()
+    {
+        //Solo si es local, ya que el manager pertenece al local
+        if (IsLocalPlayer) m_GameManager.StorePlayersClientSide();
+    }
 
+    /// <summary>
+    /// Propagates the death of the player across the network, reaching every client
+    /// </summary>
+    /// <param name="killerName">Name of the killer</param>
     [ClientRpc]
     public void KillPlayerClientRpc(string killerName)
     {
+        //Se pinta en la gui un mensaje avisando de quien a matado a quien para todos los clientes
         m_UIManager.ActivateAndUpdateKillNotification(killerName + " KILLED " + m_PlayerName.Value + "!");
         if (IsLocalPlayer)
         {
+            //Si es el jugador que ha muerto, se activa la pantalla de muerte y espera a respawnear
             m_UIManager.ActivateDeathCanvas();
         }
+        //Se desactiva a si mismo hasta nuevo aviso
         gameObject.SetActive(false);
     }
+    /// <summary>
+    /// Tells the client to update the state of the player crown, given a condition
+    /// </summary>
+    /// <param name="condition"></param>
     [ClientRpc]
     private void ManageCrownRenderClientRpc(bool condition)
     {
         m_Crown.enabled = condition;
     }
-
+    /// <summary>
+    /// Tells the clients to respawn the player
+    /// </summary>
     [ClientRpc]
     public void RespawnPlayerClientRpc()
     {
+        //Vuelve a activar al jugador, como las funciones de onEnable estan fastanticamente implementadas
+        //todo va a la perfeccion
         gameObject.SetActive(true);
 
     }
+    /// <summary>
+    /// Tells the clients to prepare for the end game
+    /// </summary>
     [ClientRpc]
     public void InitializeEndGameActionsClientRpc()
     {
         if (IsLocalPlayer)
         {
+            //Se desactiva el control
             GetComponent<InputHandler>().enabled = false;
+            //Se desactiva la velocidad
             GetComponent<PlayerController>().m_Body.velocity = new Vector2(0, GetComponent<PlayerController>().m_Body.velocity.y);
+            //Se activa la pantalla de leaderboards y ranking
             m_UIManager.ActivateEndGameCanvas();
 
         }
     }
 
+
     #endregion
 
     #region Netcode Related Methods
-
+    //Network variables simple callback methods
     void OnPlayerNameChanged(FixedString64Bytes old, FixedString64Bytes current)
     {
         m_PlayerNameRenderer.text = m_PlayerName.Value.ToString();
@@ -327,8 +425,12 @@ public class Player : NetworkBehaviour
     }
     private void UpdateGUIReadyPlayers(int previousValue, int newValue)
     {
-            m_GameManager.m_PlayersReady = newValue;
-            m_UIManager.UpdatePlayersReadyNumber(newValue);
+        m_GameManager.m_PlayersReady = newValue;
+        m_UIManager.UpdatePlayersReadyNumber(newValue);
+    }
+    private void ChangePlayerColor(Color previousValue, Color newValue)
+    {
+        GetComponent<SpriteRenderer>().color = newValue;
     }
     #endregion
 }

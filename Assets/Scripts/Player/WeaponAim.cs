@@ -1,6 +1,9 @@
 using UnityEngine;
 using Unity.Netcode;
 
+/// <summary>
+/// Class that controls the aiming, shooting and rendering of the weapon and crosshair of the player.
+/// </summary>
 public class WeaponAim : NetworkBehaviour
 {
 
@@ -36,12 +39,10 @@ public class WeaponAim : NetworkBehaviour
     }
     private void Start()
     {
-        //Check if player is not local in order to hide enemies crosshairs
 
         if (IsOwner)
         {
             m_Handler.OnMousePosition.AddListener(UpdateCrosshairPosition);
-            //m_Handler.OnFire.AddListener(PerformShotServerRpc);
         }
 
     }
@@ -59,7 +60,6 @@ public class WeaponAim : NetworkBehaviour
 
     }
 
-
     private void OnDisable()
     {
         if (IsOwner)
@@ -74,15 +74,23 @@ public class WeaponAim : NetworkBehaviour
     #endregion
 
     #region Methods
+    /// <summary>
+    /// Client side. Enables weaponry.
+    /// </summary>
     public void EnableWeapons()
     {
         m_WeaponRenderer.enabled = true;
         if (IsLocalPlayer)
+            //Para que solo se vea en el jugador local
             m_CrossHair.gameObject.GetComponent<SpriteRenderer>().enabled = true;
         if (IsOwner)
+            //Se suscribe la funcion de disparo para que pueda disparar
             m_Handler.OnFire.AddListener(PerformShotServerRpc);
     }
-
+    /// <summary>
+    /// Client side. Updates the crosshair position
+    /// </summary>
+    /// <param name="input"></param>
     void UpdateCrosshairPosition(Vector2 input)
     {
         var worldMousePosition = Camera.main.ScreenToWorldPoint(input);
@@ -99,11 +107,13 @@ public class WeaponAim : NetworkBehaviour
         SetCrossHairPosition(aimAngle);
 
         UpdateWeaponOrientationServerRPC(m_CrossHair.localPosition.x, m_CrossHair.position - m_Weapon.position);
-        //UpdateWeaponOrientation();
 
     }
 
-
+    /// <summary>
+    /// Client side. Stores the crosshair position.
+    /// </summary>
+    /// <param name="aimAngle"></param>
     void SetCrossHairPosition(float aimAngle)
     {
         var x = transform.position.x + .5f * Mathf.Cos(aimAngle);
@@ -112,7 +122,12 @@ public class WeaponAim : NetworkBehaviour
         var crossHairPosition = new Vector3(x, y, 0);
         m_CrossHair.transform.position = crossHairPosition;
     }
-
+    /// <summary>
+    /// Server side. Instatiantes a bullet with a velocity and returns the game object for further actions.
+    /// </summary>
+    /// <param name="weaponPos"></param>
+    /// <param name="velocity"></param>
+    /// <returns></returns>
     GameObject ShootBullet(Vector3 weaponPos, Vector2 velocity)
     {
 
@@ -123,16 +138,13 @@ public class WeaponAim : NetworkBehaviour
     }
 
     #endregion
-    #region Network
-    private void OnChangeWeaponRight(Vector3 previousValue, Vector3 newValue)
-    {
-        m_Weapon.right = newValue;
-    }
-    void OnFlipSpriteValueChanged(bool previous, bool current)
-    {
-        m_WeaponRenderer.flipY = current;
-    }
-    #endregion
+    #region RPCs
+    /// <summary>
+    /// Tells the server to update the crosshair position updating all network the necessary network variables and
+    /// thus, propagating across the network.
+    /// </summary>
+    /// <param name="crossHairX"></param>
+    /// <param name="newOrientation"></param>
     [ServerRpc]
     void UpdateWeaponOrientationServerRPC(float crossHairX, Vector3 newOrientation)
     {
@@ -148,16 +160,34 @@ public class WeaponAim : NetworkBehaviour
             m_FlipSprite.Value = true;
         }
     }
+    /// <summary>
+    /// Tells the server to instantiate and spawn a bullet across the network in the target direction.
+    /// </summary>
+    /// <param name="target"></param>
+    /// <param name="id"></param>
     [ServerRpc]
     private void PerformShotServerRpc(Vector2 target, ulong id)
     {
         if ((m_Player.m_State.Value != PlayerState.Hooked))
         {
-
+            //Calculos de la direccion y velocidad
             Vector2 velocity = (target - (Vector2)m_Player.transform.position).normalized * BULLET_SPEED;
             Vector2 offset = Vector2.ClampMagnitude(velocity, velocity.magnitude * 0.08f);
+            //Spawn con ownership del cliente que dispara
             ShootBullet(m_Weapon.transform.position + new Vector3(offset.x, offset.y, 0), velocity).GetComponent<NetworkObject>().SpawnWithOwnership(id);
         }
     }
+    #endregion
+    #region Network
+    //Simple methods
+    private void OnChangeWeaponRight(Vector3 previousValue, Vector3 newValue)
+    {
+        m_Weapon.right = newValue;
+    }
+    void OnFlipSpriteValueChanged(bool previous, bool current)
+    {
+        m_WeaponRenderer.flipY = current;
+    }
+    #endregion
 
 }

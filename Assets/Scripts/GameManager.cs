@@ -17,17 +17,20 @@ public class GameManager : MonoBehaviour
     [HideInInspector] public Player m_LocalPlayer;
     [HideInInspector] private Player m_BestPlayer = null;
 
-    ////SERVER ONLY
+    //Esta EED se comporta de forma distinta para servidor que para cliente. En el servidor se actualiza constantemente.
+    //En el cliente solo guarda el numero total de jugadores que habia al principio de la partida
     [HideInInspector] public Dictionary<ulong, Player> m_Players = new Dictionary<ulong, Player>();
 
     [HideInInspector] public int m_TotalTimeInSecondsLeft;
     [HideInInspector] public int m_CountdownSecondsLeft;
 
-    public readonly int TOTAL_PLAYERS = 2;
+    public readonly int TOTAL_PLAYERS = 4;
     private const float RESPAWN_TIME = 2.5f;
     public readonly int START_MATCH_TIME = 10;
+    private const int SAFE_DISTANCE = 4
+        ;
     [SerializeField] public int m_TotalMatchTimeInSeconds = 120;
-    public int m_PlayersReady = 0;
+    [HideInInspector] public int m_PlayersReady = 0;
 
     private bool takingTimeAway = false;
 
@@ -35,12 +38,10 @@ public class GameManager : MonoBehaviour
 
     [SerializeField] public GameObject m_LobbySetup;
 
-    //UnityEvent OnPlayerCreated;
 
 
     private void OnEnable()
     {
-        m_NetWorkManager.OnServerStarted += OnServerReady;
         m_NetWorkManager.OnClientConnectedCallback += OnClientConnected;
         m_NetWorkManager.OnClientDisconnectCallback += OnClientDisconnected;
 
@@ -48,14 +49,13 @@ public class GameManager : MonoBehaviour
     private void OnDisable()
     {
 
-        //networkManager.OnServerStarted -= OnServerReady;
         m_NetWorkManager.OnClientConnectedCallback -= OnClientConnected;
         m_NetWorkManager.OnClientDisconnectCallback -= OnClientDisconnected;
     }
     private void Start()
     {
+        //Setup del tiempo en la GUI
         m_TotalTimeInSecondsLeft = m_TotalMatchTimeInSeconds;
-        //Time setup on UI
         int min = m_TotalTimeInSecondsLeft / 60;
         int seconds = m_TotalTimeInSecondsLeft % 60;
         string secondsText;
@@ -65,6 +65,7 @@ public class GameManager : MonoBehaviour
 
     private void Update()
     {
+        //Lógica del reloj global de partida
         if (m_NetWorkManager.IsServer)
         {
             if (m_PlayState)
@@ -78,6 +79,8 @@ public class GameManager : MonoBehaviour
                 }
                 else
                 {
+                    //Si se acaba el tiempo, el servidor avisa a todos los clientes y les pide que inicien las acciones
+                    //pertinentes para acabar la partida
                     m_PlayState = false;
                     foreach (var p in m_Players)
                     {
@@ -91,16 +94,14 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Once the server has confirmed it is ready and functioning, this method will be called upon
-    /// </summary>
-    private void OnServerReady()
-    {
-        //if (m_NetWorkManager.IsServer)
-        //{
-        //    m_Players = new Dictionary<ulong, Player>();
-        //}
-    }
+    //public void ApprovalCheck(byte[] connectionData, ulong clientId, NetworkManager.ConnectionApprovedDelegate callback)
+    //{
+    //    //Your logic here
+    //    bool approve = true;
+    //    if (m_NetWorkManager.ConnectedClients.Count == TOTAL_PLAYERS) approve = false;
+
+    //    callback(false, null, approve, null, null);
+    //}
 
     /// <summary>
     /// Once a client has connected, this method will be called upon
@@ -111,52 +112,101 @@ public class GameManager : MonoBehaviour
         {
             return;
         }
+        if (m_Players.Count == TOTAL_PLAYERS)
+        {
+            //Si se sobrepasa el máximo de jugadores, se desconecta al cliente direcatmente
+            m_NetWorkManager.DisconnectClient(clientId);
+            return;
+        }
 
         var player = Instantiate(m_PlayerPrefab, m_SpawnPoints[Random.Range(0, 1)].position, m_SpawnPoints[Random.Range(0, 1)].rotation);
 
         player.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId);
 
+        //El servidor añade al diccionario de jugadores el nuevo jugador
         m_Players.Add(clientId, player.GetComponent<Player>());
 
     }
 
-    private void OnClientDisconnected(ulong obj)
+    private void OnClientDisconnected(ulong id)
     {
-        if (!m_NetWorkManager.IsServer) return;
-
-        m_Players.Remove(obj);
-        UpdatePlayersCount();
-
-        if (!m_PlayState)
+        if (m_NetWorkManager.IsServer)
         {
-            UpdatePlayersReadyNumber(-1);
+            if (!m_PlayState)
+            {
+                //if (m_Players.Count == TOTAL_PLAYERS) return;
+                if (m_PlayersReady > 0)
+                    //Si se va un jugador en el lobby se actualizan las cifras de los jugadores preparados en los clientes
+                    UpdatePlayersReadyNumber(-1);
+            }
+            //Se retira del diccionario el jugador que se fue y se actualizan las cifras;
+            m_Players.Remove(id);
+            UpdatePlayersCount();
+
+            //Si hay cero es que todos se han ido y el servidor se debe reseterar
+            if (m_Players.Count == 0 && m_NetWorkManager.IsServer && !m_NetWorkManager.IsHost)
+            {
+                m_NetWorkManager.Shutdown();
+                ResetGame();
+            }
+        }
+        else
+        {
+            //El cliente debe resetear su juego siempre que se desconecte
+            ResetGame();
         }
 
 
     }
+    /// <summary>
+    /// Client side. Once the match had just started, clients will populate their player dictionaries.
+    /// </summary>
+    public void StorePlayersClientSide()
+    {
+        Player[] players = FindObjectsOfType<Player>();
+        ulong i = 0;
+        foreach (var p in players)
+        {
+            m_Players.Add(i, p);
+            i++;
+        }
 
-    public IEnumerator StartMatchInTime()
+    }
+
+    /// <summary>
+    /// Server side. Coroutine method in witch match start logic is implemented.
+    /// </summary>
+    /// <returns></returns>
+    private IEnumerator StartMatchInTime()
     {
         bool playerGone = false;
         int timeLeft = START_MATCH_TIME;
         while (timeLeft >= 0)
         {
             yield return new WaitForSeconds(1);
+            //En caso de que haya alguna desconexion inesperada, se parará la cuentra atras y se reseteara el tiempo
             if (m_Players.Count < TOTAL_PLAYERS) { playerGone = true; break; }
+            //Cada segundo se actualiza en los clientes el contador
             foreach (var p in m_Players)
             {
                 p.Value.UpdateCountDownGUIClientRpc(timeLeft);
             }
-            //Actualizar counter de clientes
             timeLeft--;
         }
         if (!playerGone)
         {
             m_LobbySetup.SetActive(false);
+            m_UIManager.ActivateInGameHUD();
             int i = 0;
+            //Se prepara a cada jugador para que empiece la partida
             foreach (var p in m_Players)
             {
+                //Se guardan los jugadores en los clientes
+                //p.Value.StorePlayersClientRpc();
+                //En caso de que hubiera algun jugador colgado antes de empezar la partida, se le desactiva el estado
+                p.Value.GetComponent<GrapplingHook>().DisableHook();
                 p.Value.transform.position = m_SpawnPoints[i].position;
+                //Se activa el sistema de disparos y la GUI
                 p.Value.EnableWeaponsAndGUIClientRpc();
                 i++;
             }
@@ -166,12 +216,20 @@ public class GameManager : MonoBehaviour
         {
             foreach (var p in m_Players)
             {
+                //En caso de salida inesperada, se resetea
                 p.Value.UpdateCountDownGUIClientRpc(-1);
             }
         }
 
     }
-    public IEnumerator RespawnPlayerInTime(float waitTime, GameObject player)
+    /// <summary>
+    /// Server side. Coroutine method that waits an amount of time before respawning the player and sending the message to the clients.
+    /// It also computes the logic behind where to spawn the player, always trying to choose the most secure spawn point.
+    /// </summary>
+    /// <param name="waitTime"></param>
+    /// <param name="player"></param>
+    /// <returns></returns>
+    private IEnumerator RespawnPlayerInTime(float waitTime, GameObject player)
     {
 
         yield return new WaitForSeconds(waitTime);
@@ -179,12 +237,13 @@ public class GameManager : MonoBehaviour
         Vector3 spawnPoint = Vector3.zero;
         bool criteria = true;
 
+        //Algorítmo de busqueda del sitio más seguro para reaparecer
         foreach (var point in m_SpawnPoints)
         {
             foreach (var p in m_Players)
             {
                 if (p.Value.isActiveAndEnabled)
-                    if ((p.Value.transform.position - point.position).magnitude < 4) criteria = false;
+                    if ((p.Value.transform.position - point.position).magnitude < SAFE_DISTANCE) criteria = false;
             }
             if (criteria == true)
             {
@@ -194,7 +253,6 @@ public class GameManager : MonoBehaviour
             else criteria = true;
 
         }
-        //player.transform.position = m_SpawnPoints[Random.Range(0, m_SpawnPoints.Count)].position;
         player.transform.position = spawnPoint;
 
         player.SetActive(true);
@@ -203,7 +261,7 @@ public class GameManager : MonoBehaviour
 
     }
     /// <summary>
-    /// Server only.
+    /// Server side. Method encapsulating the coroutine call to respawn the player.
     /// </summary>
     /// <param name="waitTime"></param>
     /// <param name="player"></param>
@@ -212,7 +270,7 @@ public class GameManager : MonoBehaviour
         StartCoroutine(RespawnPlayerInTime(RESPAWN_TIME, player));
     }
     /// <summary>
-    /// Server only.
+    /// Server side. Disconnects the player.
     /// </summary>
     /// <param name="id"></param>
     public void DisconnectPlayer(ulong id)
@@ -220,7 +278,10 @@ public class GameManager : MonoBehaviour
         m_NetWorkManager.DisconnectClient(id);
     }
 
-
+    /// <summary>
+    /// Server side. Coroutine method to compute the global match time remaining.
+    /// </summary>
+    /// <returns></returns>
     private IEnumerator TakeSecondAway()
     {
 
@@ -234,9 +295,14 @@ public class GameManager : MonoBehaviour
         takingTimeAway = false;
 
     }
+    /// <summary>
+    /// Server side. Updates the number of players ready in the lobby and send the information across the network players.
+    /// If the maximun number of ready players is reached, the server then starts a countdown to start the match.
+    /// </summary>
+    /// <param name="n">1 for add a player. -1 for taking out a player</param>
     public void UpdatePlayersReadyNumber(int n)
     {
-
+        m_UIManager.UpdatePlayersReadyNumber(m_PlayersReady);
         m_PlayersReady += n;
         foreach (var p in m_Players)
         {
@@ -248,17 +314,23 @@ public class GameManager : MonoBehaviour
 
         }
     }
-
+    /// <summary>
+    /// Srver side. Updates the number of players in the game and send the information across the network players.
+    /// </summary>
     public void UpdatePlayersCount()
     {
+        m_UIManager.UpdatePlayerNumber(m_Players.Count);
         foreach (var p in m_Players)
         {
             p.Value.m_Foes.Value = m_Players.Count;
         }
     }
-
+    /// <summary>
+    /// Server side. Ranks the players everytime there is a death and computes which player must the leader crown go to.
+    /// </summary>
     public void RankPlayers()
     {
+        //Se guardan los puntos e ids en una lista y se ordena atendiendo a los puntos para avergiuar quien es el mejor
         List<int[]> pointsById = new List<int[]>();
         foreach (var p in m_Players)
         {
@@ -273,27 +345,28 @@ public class GameManager : MonoBehaviour
         });
         Player player;
         m_Players.TryGetValue((ulong)pointsById[0][0], out player);
-        if (player == m_BestPlayer)
-        {
-            m_Players.TryGetValue((ulong)pointsById[1][0], out player);
-        }
+        if (player == m_BestPlayer) return;
         player?.SetCrownActive(true);
         m_BestPlayer?.SetCrownActive(false);
         m_BestPlayer = player;
     }
-
+    /// <summary>
+    /// Resets the game state to deafult.
+    /// </summary>
     public void ResetGame()
     {
+
         m_LobbySetup.SetActive(true);
         m_LocalPlayer = null;
-        ////SERVER ONLY
         m_Players = new Dictionary<ulong, Player>();
-        m_Players = new Dictionary<ulong, Player>(); 
+        m_Players = new Dictionary<ulong, Player>();
         m_PlayersReady = 0;
         m_BestPlayer = null;
         m_TotalTimeInSecondsLeft = m_TotalMatchTimeInSeconds;
         takingTimeAway = false;
         m_PlayState = false;
+
+       
     }
 
 }

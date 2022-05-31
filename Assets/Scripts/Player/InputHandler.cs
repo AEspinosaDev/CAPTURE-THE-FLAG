@@ -3,6 +3,9 @@ using UnityEngine.InputSystem;
 using UnityEngine.Events;
 using Unity.Netcode;
 
+/// <summary>
+/// Input handler class for the player. Useful for assigning functions to the input callbacks
+/// </summary>
 public class InputHandler : NetworkBehaviour
 {
 
